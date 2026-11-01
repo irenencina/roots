@@ -1,10 +1,11 @@
-/* Roots: hand-drawn map of conscious places.
+/* Roots: a hand-drawn world map of conscious places.
 
-   Data is global and the drawing is per region:
-   - data/places.json    every place in the world, with lat/lng, plus the categories
-   - data/regions.json   the regions you can open (Piemonte, Nederland, ...)
-   - data/basemaps/*.geojson   one pen drawing per region, made by tools/build_basemap.py
-   Adding a region never needs code changes: add it to regions.json and build its basemap. */
+   Data
+   - data/places.json        every place in the world (lat/lng) and the categories
+   - data/world/*.json       countries, lakes, rivers and towns for the whole world
+   - data/admin1/<ISO3>.json the regions of one country, loaded when you zoom into it
+   All of data/world and data/admin1 is made by tools/build_world.py, so nothing here is
+   specific to one country: a place added anywhere shows up, and its region turns brown. */
 (function () {
   "use strict";
 
@@ -30,185 +31,479 @@
       '<path d="M3.5 19.5c0-8 3.8-12.6 8.5-12.6s8.5 4.6 8.5 12.6z"/><path d="M5.4 13.4h13.2M4.3 16.5h15.4M9 8.6l-.8 2.4M15 8.6l.8 2.4M12 6.9v2.6"/>',
   };
   const NOTE_TONES = ["yellow", "pink", "green"];
+  const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
+  const RIVER_ZOOM = 12;  // rivers appear when you are close
+  const PLACE_LABEL_FONT = "400 12px Kalam, cursive";
 
-  const svg = document.getElementById("map");
-  const noteEl = document.getElementById("note");
-  const legendEl = document.getElementById("legend");
-  const unplacedEl = document.getElementById("unplaced");
-  const regionsEl = document.getElementById("regions");
+  const $ = (id) => document.getElementById(id);
+  const svg = $("map");
+  const noteEl = $("note");
+  const legendEl = $("legend");
+  const unplacedEl = $("unplaced");
+  const listTitleEl = $("list-title");
+  const crumbsEl = $("crumbs");
+  const mapTitleEl = $("map-title");
 
-  let data, regions, region, basemap, catById, projection, zoom;
-  let transform = d3.zoomIdentity;
-  let W = 900, H = 1000;
-  const hidden = new Set();
-  const basemapCache = {};
-  let selectedId = null;
+  const state = {
+    places: [], categories: [], catById: {}, notYetPlaced: [],
+    countries: null, lakes: null, rivers: null, cities: [], admin1Index: {},
+    admin1: {},            // ISO3 -> FeatureCollection (loaded)
+    admin1Loading: {},     // ISO3 -> Promise
+    regionById: {},        // region id -> feature
+    countryById: {},       // ISO3 -> feature
+    dataCountries: new Set(),
+    dataRegions: new Set(),
+    focusCountry: null,    // ISO3
+    focusRegion: null,     // region id
+    selectedId: null,
+    hidden: new Set(),
+  };
+
+  let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
+  let layers = {};
 
   // ---------- helpers ----------
   function el(name, attrs, parent) {
     const n = document.createElementNS(SVG_NS, name);
-    for (const k in attrs || {}) if (attrs[k] !== undefined) n.setAttribute(k, attrs[k]);
+    for (const k in attrs || {}) if (attrs[k] !== undefined && attrs[k] !== null) n.setAttribute(k, attrs[k]);
     if (parent) parent.appendChild(n);
     return n;
   }
-  function iconSvg(cat, size) {
-    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true"><g class="icon">' + (ICONS[cat] || ICONS["friendly-house"]) + "</g></svg>";
-  }
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  }
-  function wrapLabel(name) {
-    if (name.length <= 16) return [name];
-    const mid = name.length / 2;
-    let best = -1;
-    for (let i = 0; i < name.length; i++) if (name[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
-    return best < 0 ? [name] : [name.slice(0, best), name.slice(best + 1)];
-  }
-  function inRegion(p) {
-    if (!p.location || !basemap) return false;
-    const [x0, y0, x1, y1] = basemap.focus_bbox || basemap.bbox;
-    return p.location.lng >= x0 && p.location.lng <= x1 && p.location.lat >= y0 && p.location.lat <= y1;
-  }
-  const regionPlaces = () => data.places.filter(inRegion);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const iconSvg = (cat, size) => '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true"><g class="icon">' + (ICONS[cat] || ICONS["friendly-house"]) + "</g></svg>";
   const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const narrow = () => matchMedia("(max-width: 760px)").matches;
+  const lnglat = (p) => [p.location.lng, p.location.lat];
+  // d3 reads a polygon wound the "wrong" way as the whole globe minus that shape; flip those back
+  function rewind(fc) {
+    fc.features.forEach((f) => {
+      if (!f.geometry) return;
+      if (d3.geoArea(f) > 2 * Math.PI) {
+        const flip = (poly) => poly.map((ring) => ring.slice().reverse());
+        if (f.geometry.type === "Polygon") f.geometry.coordinates = flip(f.geometry.coordinates);
+        else if (f.geometry.type === "MultiPolygon") f.geometry.coordinates = f.geometry.coordinates.map(flip);
+      }
+    });
+    return fc;
+  }
+  // the biggest piece of a country, so "zoom to the Netherlands" skips the Caribbean islands
+  function mainPart(f) {
+    if (!f.geometry || f.geometry.type !== "MultiPolygon") return f;
+    if (!f._main) {
+      let best = null, area = -1;
+      f.geometry.coordinates.forEach((poly) => {
+        const g = { type: "Polygon", coordinates: poly };
+        const a = d3.geoArea(g);
+        if (a > area) { area = a; best = g; }
+      });
+      f._main = { type: "Feature", properties: f.properties, geometry: best };
+    }
+    return f._main;
+  }
+  const getJSON = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(url + " (" + r.status + ")"); return r.json(); });
 
-  // ---------- drawing ----------
-  let gGeo, gMarks;
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  function textWidth(text, font) {
+    measureCtx.font = font;
+    return measureCtx.measureText(text).width;
+  }
 
+  // ---------- which places are where ----------
+  function locatePlaces() {
+    state.dataCountries.clear();
+    state.dataRegions.clear();
+    state.places.forEach((p) => {
+      if (!p.location) return;
+      const pt = lnglat(p);
+      if (!p._country) {
+        const c = state.countries.features.find((f) => d3.geoContains(f, pt));
+        p._country = c ? c.properties.a3 : null;
+      }
+      if (p._country) state.dataCountries.add(p._country);
+      const fc = p._country && state.admin1[p._country];
+      if (fc && !p._region) {
+        const r = fc.features.find((f) => d3.geoContains(f, pt));
+        p._region = r ? r.properties.id : null;
+      }
+      if (p._region) state.dataRegions.add(p._region);
+    });
+  }
+
+  function loadAdmin1(a3) {
+    if (state.admin1[a3]) return Promise.resolve(state.admin1[a3]);
+    if (!state.admin1Index[a3]) return Promise.resolve(null);
+    if (!state.admin1Loading[a3]) {
+      state.admin1Loading[a3] = getJSON("data/admin1/" + a3 + ".json").then(rewind).then((fc) => {
+        state.admin1[a3] = fc;
+        fc.features.forEach((f) => { state.regionById[f.properties.id] = f; });
+        locatePlaces();
+        buildGeo();
+        return fc;
+      }).catch(() => null);
+    }
+    return state.admin1Loading[a3];
+  }
+
+  // ---------- map drawing ----------
   function setupSvg() {
     svg.innerHTML = "";
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     const defs = el("defs", {}, svg);
-    // Two slightly different wobbles: each outline is drawn twice, like a pen line gone over again.
-    [["ink-a", 7, 2.6], ["ink-b", 23, 3.4], ["ink-fine", 11, 1.3]].forEach(([id, seed, scale]) => {
-      const f = el("filter", { id, x: "-5%", y: "-5%", width: "110%", height: "110%" }, defs);
+    [["ink-a", 7, 2.4], ["ink-b", 23, 3.2], ["ink-fine", 11, 1.1]].forEach(([id, seed, scale]) => {
+      const f = el("filter", { id, x: "-2%", y: "-2%", width: "104%", height: "104%" }, defs);
       el("feTurbulence", { type: "fractalNoise", baseFrequency: "0.045", numOctaves: "2", seed, result: "n" }, f);
       el("feDisplacementMap", { in: "SourceGraphic", in2: "n", scale, xChannelSelector: "R", yChannelSelector: "G" }, f);
     });
-    // Pen hatching for water
     const pat = el("pattern", { id: "hatch", width: "7", height: "7", patternUnits: "userSpaceOnUse", patternTransform: "rotate(35)" }, defs);
-    el("line", { x1: 0, y1: 0, x2: 0, y2: 7, stroke: "#1b1a17", "stroke-width": ".7", opacity: ".45" }, pat);
+    el("line", { x1: 0, y1: 0, x2: 0, y2: 7, stroke: "#1b1a17", "stroke-width": ".7", opacity: ".4" }, pat);
 
-    gGeo = el("g", {}, svg);
-    gMarks = el("g", { filter: "url(#ink-fine)" }, svg);
+    el("rect", { class: "sea", x: 0, y: 0, width: W, height: H }, svg);
+    el("rect", { class: "water-hatch", x: 0, y: 0, width: W, height: H }, svg);
+    // Fills move with the zoom; pen lines sit inside an unscaled wrapper so the wobble keeps its size.
+    layers.fills = el("g", {}, svg);
+    const a = el("g", { filter: "url(#ink-a)" }, svg);
+    layers.linesA = el("g", {}, a);
+    const b = el("g", { filter: "url(#ink-b)" }, svg);
+    layers.linesB = el("g", {}, b);
+    layers.marks = el("g", { filter: "url(#ink-fine)" }, svg);
   }
 
-  const project = (lnglat) => transform.apply(projection(lnglat));
+  function areaClass(base, id, hasData, focus) {
+    return base + (hasData ? " has-data" : "") + (focus ? " focus" : "");
+  }
 
-  function drawGeo() {
-    gGeo.innerHTML = "";
-    const path = d3.geoPath(projection);
-    const by = (role) => basemap.features.filter((f) => f.properties.role === role);
+  function buildGeo() {
+    if (!projection) return;
     const ns = { "vector-effect": "non-scaling-stroke" };
-    const t = transform.toString();
+    const { fills, linesA, linesB } = layers;
+    fills.innerHTML = linesA.innerHTML = linesB.innerHTML = "";
 
-    const fills = el("g", { transform: t }, gGeo);
-    const linesA = el("g", { transform: t, filter: "url(#ink-a)" }, gGeo);
-    const linesB = el("g", { transform: t, filter: "url(#ink-b)" }, gGeo);
-
-    by("water").forEach((f) => {
+    state.countries.features.forEach((f) => {
+      const a3 = f.properties.a3;
       const d = path(f);
+      if (!d) return;
+      const covered = !!state.admin1[a3];
+      el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false) + (covered ? " hidden-by-regions" : ""), "data-country": a3 }, fills);
+      const fc = state.admin1[a3];
+      const od = fc && fc.outline ? path(fc.outline) : d;
+      el("path", Object.assign({ d: od, class: "country-line" }, ns), linesA);
+      el("path", Object.assign({ d: od, class: "country-line b" }, ns), linesB);
+    });
+
+    Object.values(state.admin1).forEach((fc) => {
+      fc.features.forEach((f) => {
+        const id = f.properties.id;
+        const d = path(f);
+        if (!d) return;
+        el("path", { d, class: areaClass("area region", id, state.dataRegions.has(id), id === state.focusRegion), "data-region": id, "data-country": f.properties.country }, fills);
+        el("path", Object.assign({ d, class: "region-line" }, ns), linesB);
+      });
+    });
+
+    state.lakes.features.forEach((f) => {
+      const d = path(f);
+      if (!d) return;
       el("path", { d, class: "water" }, fills);
       el("path", { d, class: "water-hatch" }, fills);
-      el("path", Object.assign({ d, class: "water-line" }, ns), linesA);
+      el("path", Object.assign({ d, class: "lake-line" }, ns), linesA);
     });
-    by("land").forEach((f) => {
+
+    layers.rivers = el("g", { class: "rivers" }, linesA);
+    state.rivers.features.forEach((f) => {
       const d = path(f);
-      el("path", { d, class: "land" }, fills);
-      el("path", Object.assign({ d, class: "land-line a" }, ns), linesA);
-      el("path", Object.assign({ d, class: "land-line b" }, ns), linesB);
+      if (d) el("path", Object.assign({ d, class: "river" }, ns), layers.rivers);
     });
-    by("neighbour-border").forEach((f) => el("path", Object.assign({ d: path(f), class: "neighbour-border" }, ns), linesA));
-    by("inner-border").forEach((f) => el("path", Object.assign({ d: path(f), class: "inner-border" }, ns), linesB));
-    by("river").forEach((f) => el("path", Object.assign({ d: path(f), class: "river" }, ns), linesA));
+
+    const focus = state.focusRegion && state.regionById[state.focusRegion];
+    if (focus) {
+      const d = path(focus);
+      el("path", Object.assign({ d, class: "focus-line" }, ns), linesA);
+      el("path", Object.assign({ d, class: "focus-line b" }, ns), linesB);
+    }
+    applyTransform();
+  }
+
+  function applyTransform() {
+    const t = transform.toString();
+    layers.fills.setAttribute("transform", t);
+    layers.linesA.setAttribute("transform", t);
+    layers.linesB.setAttribute("transform", t);
+    if (layers.rivers) layers.rivers.style.display = transform.k >= RIVER_ZOOM ? "" : "none";
+    scheduleMarks();
+  }
+
+  // ---------- labels and icons, placed so nothing overlaps ----------
+  let marksQueued = false;
+  function scheduleMarks() {
+    if (marksQueued) return;
+    marksQueued = true;
+    requestAnimationFrame(() => { marksQueued = false; drawMarks(); });
   }
 
   function drawMarks() {
-    gMarks.innerHTML = "";
+    const g = layers.marks;
+    g.innerHTML = "";
     const k = transform.k;
-    const by = (role) => basemap.features.filter((f) => f.properties.role === role);
+    const boxes = [];
+    const pad = 3;
+    const hits = (b) => boxes.some((o) => b.x < o.x + o.w + pad && b.x + b.w + pad > o.x && b.y < o.y + o.h + pad && b.y + b.h + pad > o.y);
+    const inView = (x, y, m) => x > -m && x < W + m && y > -m && y < H + m;
+    // keep the heading (top-left) and the note (top-right) clear
+    if (!narrow()) boxes.push({ x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
+    boxes.push({ x: 0, y: 0, w: Math.min(W * 0.55, 440), h: 96 });
 
-    by("label").forEach((f) => {
-      if (f.properties.kind === "title") {
-        // Notebook heading: big pen capitals with a double underline, fixed to the page corner
-        const lines = (f.properties.lines || [f.properties.name]).map((s) => s.toUpperCase());
-        const longest = Math.max(...lines.map((s) => s.length));
-        const room = W - (matchMedia("(max-width: 760px)").matches ? 60 : Math.min(330, W * 0.36));
-        const size = Math.round(Math.min(36, room / (longest * 0.72)));
-        const x = 28;
-        let y = 18;
-        lines.forEach((line) => {
-          y += size * 1.05;
-          el("text", { x, y, class: "title-label", style: "font-size:" + size + "px" }, gMarks).textContent = line;
-        });
-        const width = Math.min(room - 20, longest * size * 0.7);
-        el("path", { class: "title-rule", d: "M" + (x - 4) + " " + (y + 9) + "h" + width }, gMarks);
-        el("path", { class: "title-rule", d: "M" + (x + 2) + " " + (y + 14) + "h" + (width - 12) }, gMarks);
-      } else {
-        const [x, y] = project(f.geometry.coordinates);
-        const t = el("text", { x, y, class: "neighbour-label", "text-anchor": "middle" }, gMarks);
-        t.textContent = f.properties.name.toUpperCase();
+    const visible = state.places.filter((p) => p.location && !p.categories.every((c) => state.hidden.has(c)));
+
+    // 0. zoomed far out: one circled count per country instead of every icon
+    if (k < ADMIN_ZOOM) {
+      const groups = {};
+      visible.forEach((p) => { (groups[p._country || "?"] = groups[p._country || "?"] || []).push(p); });
+      Object.entries(groups).forEach(([a3, ps]) => {
+        const pts = ps.map((p) => transform.apply(projection(lnglat(p))));
+        const x = d3.mean(pts, (q) => q[0]), y = d3.mean(pts, (q) => q[1]);
+        if (!inView(x, y, 20)) return;
+        const r = 11 + Math.min(10, Math.sqrt(ps.length) * 2);
+        const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-country": a3, "aria-label": ps.length + " places, zoom in" }, g);
+        el("circle", { cx: x, cy: y, r }, grp);
+        el("circle", { class: "ring", cx: x + 1, cy: y - 1, r: r + 2.5 }, grp);
+        el("text", { x, y: y + 5, "text-anchor": "middle" }, grp).textContent = ps.length;
+        boxes.push({ x: x - r - 3, y: y - r - 3, w: 2 * r + 6, h: 2 * r + 6 });
+      });
+    }
+
+    // 1. place icons, nudged apart when they would sit on top of each other
+    const size = Math.max(18, Math.min(28, 14 + Math.log2(k) * 2));
+    const placed = [];
+    const order = visible.slice().sort((a, b) => (b.id === state.selectedId) - (a.id === state.selectedId));
+    (k < ADMIN_ZOOM ? [] : order).forEach((p) => {
+      const [x0, y0] = transform.apply(projection(lnglat(p)));
+      if (!inView(x0, y0, 40)) return;
+      const w = size * p.categories.length;
+      let x = x0, y = y0, box = { x: x - w / 2, y: y - size / 2, w, h: size };
+      if (hits(box)) {
+        for (let ring = 1; ring <= 3 && hits(box); ring++) {
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + ring * 0.4;
+            const nx = x0 + Math.cos(a) * size * 0.9 * ring, ny = y0 + Math.sin(a) * size * 0.9 * ring;
+            const nb = { x: nx - w / 2, y: ny - size / 2, w, h: size };
+            if (!hits(nb)) { x = nx; y = ny; box = nb; break; }
+          }
+        }
+      }
+      boxes.push(box);
+      placed.push({ p, x, y, x0, y0, w, box });
+    });
+
+    // 2. place names, tried on the right, left, below, above; skipped if none fits
+    const nameBoxes = new Map();
+    placed.slice().sort((a, b) => (b.p.id === state.selectedId) - (a.p.id === state.selectedId)).forEach((it) => {
+      const selected = it.p.id === state.selectedId;
+      const font = selected ? "700 12px Kalam, cursive" : PLACE_LABEL_FONT;
+      const tw = textWidth(it.p.name, font) + 2, th = 13;
+      const cands = [
+        { x: it.box.x + it.box.w + 3, y: it.y - th / 2, anchor: "start" },
+        { x: it.box.x - 3 - tw, y: it.y - th / 2, anchor: "start" },
+        { x: it.x - tw / 2, y: it.box.y + it.box.h + 1, anchor: "start" },
+        { x: it.x - tw / 2, y: it.box.y - th - 1, anchor: "start" },
+      ];
+      for (const c of cands) {
+        const b = { x: c.x, y: c.y, w: tw, h: th };
+        if (!hits(b) && inView(b.x, b.y, 0)) { boxes.push(b); nameBoxes.set(it.p.id, b); break; }
       }
     });
 
-    by("city").forEach((f) => {
-      const [x, y] = project(f.geometry.coordinates);
-      const s = f.properties.size;
-      const g = el("g", { class: "city " + s }, gMarks);
-      el("circle", { cx: x, cy: y, r: s === "big" ? 5.5 : s === "town" ? 4 : 2.8 }, g);
-      if (s === "big") el("circle", { class: "dot", cx: x, cy: y, r: 1.6 }, g);
-      if (s !== "small" || k > 1.5) {
-        const t = el("text", { x: x + 7, y: y - 6 }, g);
-        t.textContent = f.properties.name.toUpperCase();
+    placed.forEach((it) => {
+      const p = it.p;
+      const grp = el("g", {
+        class: "place" + (state.selectedId === p.id ? " selected" : ""),
+        tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
+      }, g);
+      if (Math.hypot(it.x - it.x0, it.y - it.y0) > 2) {
+        el("path", { class: "leader", d: "M" + it.x0 + " " + it.y0 + "L" + it.x + " " + it.y }, grp);
+        el("circle", { cx: it.x0, cy: it.y0, r: 1.6, fill: "#1b1a17" }, grp);
       }
-    });
-
-    const iconSize = Math.min(28, 20 + (k - 1) * 4);
-    regionPlaces().forEach((p) => {
-      const [x, y] = project([p.location.lng, p.location.lat]);
-      const g = el("g", {
-        class: "place" + (selectedId === p.id ? " selected" : "") + (p.categories.every((c) => hidden.has(c)) ? " off" : ""),
-        tabindex: "0",
-        role: "button",
-        "aria-label": p.name,
-        "data-id": p.id,
-      }, gMarks);
-      const w = iconSize * p.categories.length;
-      el("ellipse", { class: "halo", cx: x, cy: y, rx: w / 2 + 6, ry: iconSize / 2 + 6 }, g);
+      el("ellipse", { class: "halo", cx: it.x, cy: it.y, rx: it.w / 2 + 5, ry: size / 2 + 5 }, grp);
       p.categories.forEach((c, i) => {
-        const ig = el("g", { class: "icon", transform: "translate(" + (x - w / 2 + i * iconSize) + " " + (y - iconSize / 2) + ") scale(" + iconSize / 24 + ")" }, g);
+        const ig = el("g", { class: "icon", transform: "translate(" + (it.box.x + i * size) + " " + it.box.y + ") scale(" + size / 24 + ")" }, grp);
         ig.innerHTML = ICONS[c] || ICONS["friendly-house"];
       });
-      // Names show once zoomed in, so the overview stays readable
-      const label = k >= 1.8 || selectedId === p.id ? wrapLabel(p.name) : [];
-      label.forEach((line, i) => {
-        const t = el("text", { x: x + w / 2 + 3, y: y + 3 + i * 12 - (label.length - 1) * 6 }, g);
-        t.textContent = line;
-      });
-      el("title", {}, g).textContent = p.name;
+      const nb = nameBoxes.get(p.id);
+      if (nb) el("text", { x: nb.x, y: nb.y + 10 }, grp).textContent = p.name;
+      el("title", {}, grp).textContent = p.name;
+    });
+
+    // 3. region names (inside countries whose regions are drawn), then country names
+    const areaLabels = [];
+    if (k >= ADMIN_ZOOM) Object.values(state.admin1).forEach((fc) => fc.features.forEach((f) => areaLabels.push({ f, kind: "region" })));
+    state.countries.features.forEach((f) => areaLabels.push({ f, kind: "country" }));
+    areaLabels.forEach(({ f, kind }) => {
+      if (kind === "country" && state.admin1[f.properties.a3] && k >= ADMIN_ZOOM) return;
+      const b = path.bounds(f);
+      const wpx = (b[1][0] - b[0][0]) * k, hpx = (b[1][1] - b[0][1]) * k;
+      if (wpx < 70 || hpx < 26) return;
+      if (!f._anchor) f._anchor = d3.geoCentroid(f);
+      const [x, y] = transform.apply(projection(f._anchor));
+      if (!inView(x, y, 0)) return;
+      const text = f.properties.name.toUpperCase();
+      const fs = kind === "country" ? Math.min(16, 10 + wpx / 80) : Math.min(14, 9 + wpx / 90);
+      const font = (kind === "country" ? "400 " : "300 ") + fs + "px Kalam, cursive";
+      const tw = textWidth(text, font) * 1.12 + 4;
+      if (tw > wpx * 0.95) return;
+      const bx = { x: x - tw / 2, y: y - fs / 2 - 2, w: tw, h: fs + 4 };
+      if (hits(bx)) return;
+      boxes.push(bx);
+      el("text", { x, y: y + fs * 0.35, class: "area-label " + kind, "text-anchor": "middle", style: "font-size:" + fs.toFixed(1) + "px" }, g).textContent = text;
+    });
+
+    // 4. towns: biggest first, only as many as fit
+    if (k >= ADMIN_ZOOM) {
+      const minPop = k > 60 ? 15000 : k > 25 ? 60000 : k > 10 ? 250000 : 1000000;
+      let count = 0;
+      for (const row of state.cities) {
+        if (count > 60) break;
+        const [name, lng, lat, pop, capital] = row;
+        if (pop < minPop && !capital) continue;
+        const [x, y] = transform.apply(projection([lng, lat]));
+        if (!inView(x, y, 0)) continue;
+        const big = pop > 1000000 || capital;
+        const r = big ? 4.5 : pop > 200000 ? 3.6 : 2.6;
+        const font = (big ? "400 " : "300 ") + "11px Kalam, cursive";
+        const label = name.toUpperCase();
+        const tw = textWidth(label, font) * 1.08;
+        const dot = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
+        if (hits(dot)) continue;
+        const cands = [{ x: x + r + 3, y: y - 13 }, { x: x - r - 3 - tw, y: y - 13 }, { x: x + r + 3, y: y + 2 }, { x: x - r - 3 - tw, y: y + 2 }];
+        const lb = cands.map((c) => ({ x: c.x, y: c.y, w: tw, h: 12 })).find((b) => !hits(b));
+        if (!lb) continue;
+        boxes.push(dot, lb);
+        const cg = el("g", { class: "city" + (big ? "" : " small") }, g);
+        el("circle", { cx: x, cy: y, r }, cg);
+        if (big) el("circle", { class: "dot", cx: x, cy: y, r: 1.4 }, cg);
+        el("text", { x: lb.x, y: lb.y + 10 }, cg).textContent = label;
+        count++;
+      }
+    }
+  }
+
+  // ---------- zoom ----------
+  function zoomToFeature(f, opts) {
+    const [[x0, y0], [x1, y1]] = path.bounds(mainPart(f));
+    const left = 30, top = narrow() ? 80 : 90;
+    const right = narrow() ? W - 30 : W - Math.min(320, W * 0.34);
+    const bottom = H - 30;
+    const k = Math.min(1500, 0.92 * Math.min((right - left) / (x1 - x0), (bottom - top) / (y1 - y0)));
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const t = d3.zoomIdentity.translate((left + right) / 2 - cx * k, (top + bottom) / 2 - cy * k).scale(k);
+    const sel = d3.select(svg);
+    (opts && opts.instant ? sel : sel.transition().duration(reduceMotion() ? 0 : 750)).call(zoom.transform, t);
+  }
+
+  function onZoomEnd() {
+    if (transform.k < ADMIN_ZOOM) return;
+    // load the regions of every country in view
+    const inv = (x, y) => projection.invert(transform.invert([x, y]));
+    const [lw, nn] = inv(0, 0), [le, ns] = inv(W, H);
+    Object.entries(state.admin1Index).forEach(([a3, b]) => {
+      if (b[2] >= lw && b[0] <= le && b[3] >= ns && b[1] <= nn) loadAdmin1(a3);
     });
   }
 
-  function redraw() {
-    drawGeo();
-    drawMarks();
+  // ---------- focus: country, region, place ----------
+  function setFocus({ country, region }, opts) {
+    state.focusCountry = country || null;
+    state.focusRegion = region || null;
+    buildGeo();
+    renderHeading();
+    renderList();
+    if (!state.selectedId) showWelcome();
+    if (!opts || opts.zoom !== false) {
+      const f = region ? state.regionById[region] : country ? state.countryById[country] : null;
+      if (f) zoomToFeature(f, opts); else d3.select(svg).transition().duration(reduceMotion() ? 0 : 750).call(zoom.transform, d3.zoomIdentity);
+    }
+    const hash = region || country || "";
+    if (location.hash.slice(1) !== hash) history.replaceState(null, "", hash ? "#" + hash : location.pathname);
+  }
+
+  function renderHeading() {
+    const crumbs = [{ label: "World", go: () => { select(null); setFocus({}); } }];
+    let title = "The world";
+    const c = state.focusCountry && state.countryById[state.focusCountry];
+    if (c) {
+      title = c.properties.name;
+      if (state.focusRegion) crumbs.push({ label: c.properties.name, go: () => { select(null); setFocus({ country: c.properties.a3 }); } });
+    }
+    const r = state.focusRegion && state.regionById[state.focusRegion];
+    if (r) title = r.properties.name;
+    mapTitleEl.textContent = title;
+    crumbsEl.innerHTML = "";
+    if (c) crumbs.forEach((cr) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = cr.label;
+      b.addEventListener("click", cr.go);
+      li.appendChild(b);
+      crumbsEl.appendChild(li);
+    });
+  }
+
+  function placesInFocus() {
+    const here = state.places.filter((p) => p.location);
+    if (state.focusRegion) return here.filter((p) => p._region === state.focusRegion);
+    if (state.focusCountry) return here.filter((p) => p._country === state.focusCountry);
+    return here;
+  }
+  function focusName() {
+    const r = state.focusRegion && state.regionById[state.focusRegion];
+    const c = state.focusCountry && state.countryById[state.focusCountry];
+    return r ? r.properties.name : c ? c.properties.name : "the world";
+  }
+
+  function renderList() {
+    const here = placesInFocus();
+    listTitleEl.innerHTML = here.length
+      ? "<b>" + here.length + "</b> place" + (here.length === 1 ? "" : "s") + " in " + esc(focusName())
+      : "No places in " + esc(focusName()) + " yet";
+    legendEl.innerHTML = "";
+    state.categories.forEach((c) => {
+      const places = here.filter((p) => p.categories.includes(c.id));
+      if (!places.length) return;
+      const group = document.createElement("section");
+      group.className = "legend-group";
+      if (state.hidden.has(c.id)) group.setAttribute("data-off", "");
+      group.innerHTML =
+        '<button class="legend-head" type="button" aria-pressed="' + !state.hidden.has(c.id) + '" title="' + esc(c.label_it || c.label_en) + '">' +
+        iconSvg(c.id, 26) + '<span class="label">' + esc(c.label_en) + '</span><span class="count">' + places.length + "</span></button>" +
+        "<ul>" + places.map((p) => '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button></li>").join("") + "</ul>";
+      const head = group.querySelector(".legend-head");
+      head.addEventListener("click", () => {
+        if (state.hidden.has(c.id)) state.hidden.delete(c.id); else state.hidden.add(c.id);
+        renderList();
+        scheduleMarks();
+      });
+      group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { zoom: true })));
+      legendEl.appendChild(group);
+    });
+    const np = state.notYetPlaced.filter((p) =>
+      state.focusRegion ? p.region === state.focusRegion : state.focusCountry ? String(p.region).startsWith(state.focusCountry + "-") : true);
+    unplacedEl.hidden = !np.length;
+    if (np.length) unplacedEl.innerHTML = "<h3>Not on the map yet</h3><p>" + np.map((p) => esc(p.name)).join(", ") + ".</p>";
   }
 
   // ---------- note ----------
   function showWelcome() {
     noteEl.dataset.tone = "green";
-    const n = regionPlaces().length;
-    noteEl.innerHTML = n
-      ? '<p class="hint">Tap a place on the map</p><p>' + n + " places in " + esc(region.name) + ". Tap a type in the list to hide or show it.</p>"
-      : '<p class="hint">' + esc(region.name) + "</p><p>" + esc(region.note || "No places here yet.") + "</p>";
+    const n = placesInFocus().length;
+    noteEl.innerHTML = state.focusRegion || state.focusCountry
+      ? (n ? '<p class="hint">Tap a place</p><p>' + n + " places in " + esc(focusName()) + ". Tap a type in the list to hide or show it, or a neighbouring region to move there.</p>"
+           : '<p class="hint">' + esc(focusName()) + "</p><p>No places here yet. Brown regions have places; grey ones are still empty.</p>")
+      : '<p class="hint">Zoom in or tap a country</p><p>Brown areas have places, grey ones are still empty.</p>';
   }
 
   function showPlace(p) {
-    noteEl.dataset.tone = NOTE_TONES[data.places.indexOf(p) % NOTE_TONES.length];
-    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 24) + esc(catById[c] ? catById[c].label_en : c) + "</span>").join("");
-    const site = p.website
-      ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>"
-      : "not added yet";
+    noteEl.dataset.tone = NOTE_TONES[state.places.indexOf(p) % NOTE_TONES.length];
+    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 24) + esc(state.catById[c] ? state.catById[c].label_en : c) + "</span>").join("");
+    const site = p.website ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>" : "not added yet";
     noteEl.innerHTML =
       '<button class="close" type="button" aria-label="Close">×</button>' +
       "<h2>" + esc(p.name) + "</h2>" +
@@ -221,137 +516,129 @@
   }
 
   function select(id, opts) {
-    selectedId = id;
-    const p = id && data.places.find((x) => x.id === id);
-    if (p) showPlace(p); else showWelcome();
-    legendEl.querySelectorAll("li button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === id)));
-    if (p && opts && opts.focus) {
-      const [x, y] = projection([p.location.lng, p.location.lat]);
-      const k = Math.max(transform.k, 2.2);
-      d3.select(svg).transition().duration(reduceMotion() ? 0 : 600)
-        .call(zoom.transform, d3.zoomIdentity.translate(W / 2 - x * k, H / 2 - y * k).scale(k));
-    } else {
-      drawMarks();
-    }
-    if (p && matchMedia("(max-width: 760px)").matches) noteEl.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" });
-  }
-
-  // ---------- list of places ----------
-  function buildLegend() {
-    legendEl.innerHTML = "";
-    const here = regionPlaces();
-    if (!here.length) legendEl.innerHTML = '<p class="empty">No places in ' + esc(region.name) + " yet.</p>";
-    data.categories.forEach((c) => {
-      const places = here.filter((p) => p.categories.includes(c.id));
-      if (!places.length) return;
-      const group = document.createElement("section");
-      group.className = "legend-group";
-      if (hidden.has(c.id)) group.setAttribute("data-off", "");
-      group.innerHTML =
-        '<button class="legend-head" type="button" aria-pressed="' + !hidden.has(c.id) + '" title="' + esc(c.label_it || c.label_en) + '">' +
-        iconSvg(c.id, 26) + '<span class="label">' + esc(c.label_en) + '</span><span class="count">' + places.length + "</span></button>" +
-        "<ul>" + places.map((p) => '<li><button type="button" data-id="' + esc(p.id) + '">' + esc(p.name) + "</button></li>").join("") + "</ul>";
-      const head = group.querySelector(".legend-head");
-      head.addEventListener("click", () => {
-        if (hidden.has(c.id)) hidden.delete(c.id); else hidden.add(c.id);
-        const on = !hidden.has(c.id);
-        head.setAttribute("aria-pressed", String(on));
-        if (on) group.removeAttribute("data-off"); else group.setAttribute("data-off", "");
-        drawMarks();
-      });
-      group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { focus: true })));
-      legendEl.appendChild(group);
-    });
-
-    const np = (data.not_yet_placed || []).filter((p) => (p.region || "piemonte") === region.id);
-    unplacedEl.hidden = !np.length;
-    if (np.length) unplacedEl.innerHTML = "<h3>Not on the map yet</h3><p>" + np.map((p) => esc(p.name)).join(", ") + ".</p>";
-  }
-
-  function buildRegionTabs() {
-    regionsEl.innerHTML = regions.regions
-      .map((r) => '<li><a href="#' + esc(r.id) + '"' + (region && r.id === region.id ? ' aria-current="page"' : "") + ">" + esc(r.name) + "</a></li>")
-      .join("");
-  }
-
-  // ---------- setup ----------
-  function sizeToContainer() {
-    const r = svg.getBoundingClientRect();
-    if (r.width < 10 || r.height < 10) return;
-    // drawing units follow the screen (520–900 across) so pen lines and text stay legible on phones
-    W = Math.round(Math.max(520, Math.min(900, r.width)));
-    H = Math.max(420, Math.min(1500, Math.round((W * r.height) / r.width)));
-  }
-
-  function fitProjection() {
-    const land = basemap.features.find((f) => f.properties.role === "land");
-    const narrow = matchMedia("(max-width: 760px)").matches;
-    // leave room for the notebook heading on top and the post-it on the right
-    const right = narrow ? W - 30 : W - Math.min(280, W * 0.32);
-    const lines = (basemap.features.find((f) => f.properties.kind === "title") || { properties: {} }).properties.lines || [""];
-    const top = 40 + lines.length * 38;
-    projection = d3.geoMercator().fitExtent([[40, top], [right, H - 40]], land);
-  }
-
-  function draw() {
-    sizeToContainer();
-    setupSvg();
-    fitProjection();
-    transform = d3.zoomIdentity;
-    zoom = d3.zoom().scaleExtent([1, 10]).on("zoom", (ev) => {
-      transform = ev.transform;
-      redraw();
-    });
-    d3.select(svg).call(zoom).on("dblclick.zoom", null);
-    d3.select(svg).call(zoom.transform, d3.zoomIdentity);
-  }
-
-  function loadBasemap(r) {
-    if (!basemapCache[r.id]) basemapCache[r.id] = fetch(r.basemap).then((res) => res.json());
-    return basemapCache[r.id];
-  }
-
-  function openRegion() {
-    const id = location.hash.replace("#", "");
-    const r = regions.regions.find((x) => x.id === id) || regions.regions.find((x) => x.id === regions.default) || regions.regions[0];
-    region = r;
-    selectedId = null;
-    buildRegionTabs();
-    return loadBasemap(r).then((bm) => {
-      if (region !== r) return;
-      basemap = bm;
-      buildLegend();
+    state.selectedId = id;
+    const p = id && state.places.find((x) => x.id === id);
+    if (!p) {
       showWelcome();
-      draw();
-    });
+      legendEl.querySelectorAll("li button").forEach((b) => b.setAttribute("aria-current", "false"));
+      scheduleMarks();
+      return;
+    }
+    showPlace(p);
+    // the place's region becomes the focus (red-brown)
+    if (p._region !== state.focusRegion) setFocus({ country: p._country, region: p._region }, { zoom: false });
+    else renderList();
+    if (opts && opts.zoom) {
+      const [x, y] = projection(lnglat(p));
+      const k = Math.max(transform.k, 60);
+      const cx = narrow() ? W / 2 : (W - Math.min(320, W * 0.34)) / 2 + 15;
+      d3.select(svg).transition().duration(reduceMotion() ? 0 : 650).call(zoom.transform, d3.zoomIdentity.translate(cx - x * k, H / 2 - y * k).scale(k));
+    } else {
+      scheduleMarks();
+    }
+    if (narrow()) noteEl.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" });
   }
 
+  // ---------- events ----------
   svg.addEventListener("click", (ev) => {
-    const g = ev.target.closest(".place");
-    if (g) select(g.dataset.id);
+    const placeEl = ev.target.closest(".place");
+    if (placeEl) return select(placeEl.dataset.id);
+    const cluster = ev.target.closest(".cluster");
+    if (cluster && state.countryById[cluster.dataset.country]) {
+      select(null);
+      loadAdmin1(cluster.dataset.country);
+      return setFocus({ country: cluster.dataset.country }, { zoom: true });
+    }
+    const area = ev.target.closest(".area");
+    if (!area) return;
+    const region = area.dataset.region, country = area.dataset.country;
+    select(null);
+    if (region) {
+      setFocus({ country, region }, { zoom: true });
+    } else if (country) {
+      loadAdmin1(country);
+      setFocus({ country }, { zoom: true });
+    }
   });
   svg.addEventListener("keydown", (ev) => {
     const g = ev.target.closest && ev.target.closest(".place");
     if (g && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); select(g.dataset.id); }
   });
-  document.getElementById("zoom-in").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1.6));
-  document.getElementById("zoom-out").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1 / 1.6));
-  document.getElementById("zoom-reset").addEventListener("click", () => d3.select(svg).transition().duration(400).call(zoom.transform, d3.zoomIdentity));
-  window.addEventListener("hashchange", () => { if (regions) openRegion(); });
+  $("zoom-in").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1.8));
+  $("zoom-out").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1 / 1.8));
+  $("zoom-reset").addEventListener("click", () => { select(null); setFocus({}); });
+
+  function sizeToContainer() {
+    const r = svg.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    W = Math.round(Math.max(520, Math.min(1000, r.width)));
+    H = Math.max(420, Math.min(1600, Math.round((W * r.height) / r.width)));
+  }
+
+  function init() {
+    sizeToContainer();
+    setupSvg();
+    // Mercator world, Antarctica left off, fitted to the page
+    projection = d3.geoMercator().fitExtent([[10, 10], [W - 10, H - 10]], { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-180, -56], [-180, 80], [180, 80], [180, -56], [-180, -56]].reverse()] } });
+    path = d3.geoPath(projection).digits(4);
+    zoom = d3.zoom()
+      .scaleExtent([1, 3000])
+      .translateExtent([[-W * 0.2, -H * 0.2], [W * 1.2, H * 1.2]])
+      .on("zoom", (ev) => { transform = ev.transform; applyTransform(); })
+      .on("end", onZoomEnd);
+    d3.select(svg).call(zoom).on("dblclick.zoom", null);
+    buildGeo();
+  }
+
   let resizeTimer;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => basemap && draw(), 200);
+    resizeTimer = setTimeout(() => {
+      if (!state.countries) return;
+      const t = transform;
+      init();
+      d3.select(svg).call(zoom.transform, t);
+    }, 200);
   });
 
-  Promise.all([fetch("data/places.json").then((r) => r.json()), fetch("data/regions.json").then((r) => r.json())])
-    .then(([places, regs]) => {
-      data = places;
-      regions = regs;
-      catById = Object.fromEntries(data.categories.map((c) => [c.id, c]));
-      return openRegion();
-    })
-    .catch((err) => {
-      noteEl.innerHTML = '<p class="hint">The map could not load.</p><p>' + esc(err.message) + "</p>";
+  function startFromHash() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (h && state.regionById[h]) return setFocus({ country: state.regionById[h].properties.country, region: h }, { zoom: true, instant: true });
+    if (h && state.countryById[h]) return loadAdmin1(h).then(() => setFocus({ country: h }, { zoom: true, instant: true }));
+    // default: the region with the most places
+    const counts = {};
+    state.places.forEach((p) => { if (p._region) counts[p._region] = (counts[p._region] || 0) + 1; });
+    const best = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    if (best) return setFocus({ country: state.regionById[best].properties.country, region: best }, { zoom: true, instant: true });
+    setFocus({}, { zoom: true, instant: true });
+  }
+
+  Promise.all([
+    getJSON("data/places.json"), getJSON("data/world/countries.json"), getJSON("data/world/lakes.json"),
+    getJSON("data/world/rivers.json"), getJSON("data/world/cities.json"), getJSON("data/admin1/index.json"),
+  ]).then(([places, countries, lakes, rivers, cities, index]) => {
+    state.places = places.places;
+    state.categories = places.categories;
+    state.notYetPlaced = places.not_yet_placed || [];
+    state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
+    state.countries = rewind(countries);
+    rewind(lakes);
+    countries.features.forEach((f) => { state.countryById[f.properties.a3] = f; });
+    state.lakes = lakes;
+    state.rivers = rivers;
+    state.cities = cities.rows;
+    state.admin1Index = index;
+    locatePlaces();
+    init();
+    // regions of every country that has places, so their regions can turn brown
+    return Promise.all([...state.dataCountries].map(loadAdmin1)).then(() => {
+      const h = decodeURIComponent(location.hash.slice(1));
+      const extra = h && h.length === 3 ? loadAdmin1(h) : h ? loadAdmin1(h.split("-")[0]) : Promise.resolve();
+      return extra.then(startFromHash);
     });
+  }).then(() => {
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleMarks);
+  }).catch((err) => {
+    noteEl.innerHTML = '<p class="hint">The map could not load.</p><p>' + esc(err.message) + "</p>";
+  });
 })();

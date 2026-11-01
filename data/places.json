@@ -1,5 +1,5 @@
 {
-  "region": "World. Each region's map is in data/regions.json; places appear on any region whose area contains them.",
+  "region": "World. Places appear on the map wherever their location is.",
   "note": "Coordinates are rough guesses from where places are drawn on the paper map, not real addresses.",
   "categories": [
     {
@@ -556,7 +556,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     },
     {
       "id": "maciot",
@@ -571,7 +571,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     },
     {
       "id": "renzo-oliva",
@@ -586,7 +586,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     },
     {
       "id": "crealto",
@@ -601,7 +601,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     },
     {
       "id": "a-modo-mio",
@@ -616,7 +616,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     },
     {
       "id": "biula",
@@ -631,7 +631,7 @@
       "website": "",
       "contact": "",
       "open_questions": "Location unknown; kept aside until it can be placed.",
-      "region": "piemonte"
+      "region": "ITA-piemonte"
     }
   ]
 }

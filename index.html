@@ -17,18 +17,22 @@
       <h1 class="wordmark">ROOTS</h1>
       <p class="tagline">Intentional communities and conscious places around us</p>
     </div>
-    <ul class="regions" id="regions" aria-label="Regions"></ul>
   </header>
   <aside class="side">
+    <p class="list-title" id="list-title"></p>
     <nav class="legend" id="legend" aria-label="Places by type"></nav>
     <div class="unplaced" id="unplaced" hidden></div>
   </aside>
   <div class="map-wrap">
-    <svg id="map" role="img" aria-label="Hand-drawn map of conscious places"></svg>
+    <svg id="map" role="img" aria-label="Hand-drawn world map of conscious places"></svg>
+    <div class="map-heading">
+      <ol class="crumbs" id="crumbs" aria-label="Where you are"></ol>
+      <h2 id="map-title">The world</h2>
+    </div>
     <div class="zoom">
       <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
       <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-      <button id="zoom-reset" type="button" aria-label="Show the whole region">⌂</button>
+      <button id="zoom-reset" type="button" aria-label="Zoom out to the whole world">⌂</button>
     </div>
   </div>
   <div class="note" id="note" aria-live="polite"><p class="hint">Loading the map…</p></div>

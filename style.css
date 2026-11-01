@@ -1,10 +1,14 @@
-/* Layout: a notebook spread. Left margin column holds the title, region tabs and the list of
-   places; the map fills the rest, with the post-it note stuck on its top-right corner.
+/* Layout: a notebook spread. Left margin column holds the title and the list of places;
+   the zoomable world map fills the rest, with the place heading written on its top-left
+   and the post-it note stuck on its top-right corner.
    One deliberate look (black pen on yellowed paper) for every viewer theme. */
 :root {
   --page: #f1e4bb;          /* yellowed notebook paper */
   --page-shade: #dcc995;    /* darker paper toward the edges */
-  --land: #ecdcbf;          /* map beige from the paper map */
+  --land: #ecdcbf;          /* map beige from the paper map (icon fill) */
+  --land-none: #d9d5c9;     /* regions with no places yet: grey */
+  --land-data: #e9d8b8;     /* regions with places: brown */
+  --land-focus: #ddb995;    /* the region in focus: red-brown */
   --water: #b7c6c6;         /* map grey-blue from the paper map */
   --ink: #1b1a17;           /* black fine-liner */
   --ink-soft: #4c463b;
@@ -89,18 +93,8 @@ body::after {
 }
 .tagline { margin: 6px 0 0; font-size: 15px; color: var(--ink-soft); text-wrap: balance; }
 
-.regions { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; padding: 0; list-style: none; }
-.regions a {
-  display: inline-block;
-  padding: 2px 10px;
-  color: var(--ink);
-  font-weight: 400;
-  text-decoration: none;
-  border: 1.5px solid transparent;
-  border-radius: 48% 52% 45% 55% / 60% 45% 55% 40%;
-}
-.regions a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
-.regions a[aria-current="page"] { border-color: var(--ink); font-weight: 700; }
+.list-title { margin: 0; font-weight: 400; font-size: 15px; color: var(--ink-soft); }
+.list-title b { color: var(--ink); font-weight: 700; }
 
 .legend { display: flex; flex-direction: column; gap: 14px; }
 .legend-head {
@@ -150,7 +144,8 @@ body::after {
   cursor: pointer;
 }
 .legend-group li button::before { content: "– "; }
-.legend-group li button:hover, .legend-group li button[aria-current="true"] { text-decoration: underline wavy; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.legend-group li button:hover { font-weight: 400; }
+.legend-group li button[aria-current="true"] { font-weight: 700; }
 .legend-group[data-off] ul { opacity: .35; }
 .empty { margin: 0; font-size: 15px; color: var(--ink-soft); }
 
@@ -193,6 +188,40 @@ body::after {
   cursor: pointer;
 }
 .zoom button:hover { background: var(--land); }
+
+/* heading written on the map: where you are, with the way back up */
+.map-heading {
+  position: absolute;
+  top: 14px;
+  left: 22px;
+  max-width: calc(100% - 360px);
+  pointer-events: none;
+}
+.crumbs { display: flex; flex-wrap: wrap; gap: 0 6px; margin: 0; padding: 0; list-style: none; font-size: 15px; pointer-events: auto; }
+.crumbs li + li::before { content: "›"; margin-right: 6px; color: var(--ink-soft); }
+.crumbs button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 400;
+  font-size: 15px;
+  cursor: pointer;
+}
+.crumbs button:hover { font-weight: 700; }
+.map-heading h2 {
+  display: inline-block;
+  margin: 2px 0 0;
+  padding: 0 6px 4px 0;
+  font-weight: 700;
+  font-size: clamp(24px, 3.2vw, 38px);
+  line-height: 1.1;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  border-bottom: 4px double var(--ink);
+  text-wrap: balance;
+}
 
 /* ---------- post-it note, stuck on the top right of the map ---------- */
 .note {
@@ -264,26 +293,37 @@ body::after {
 button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* ---------- pen strokes on the map ---------- */
-.land { fill: var(--land); stroke: none; }
-.land-line { fill: none; stroke: var(--ink); stroke-linejoin: round; stroke-linecap: round; }
-.land-line.a { stroke-width: 1.7; }
-.land-line.b { stroke-width: .8; opacity: .8; }
-.inner-border { fill: none; stroke: var(--ink); stroke-width: .9; stroke-dasharray: 5 3.5; stroke-linecap: round; }
-.neighbour-border { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; opacity: .85; }
+.sea { fill: var(--water); }
+.area { stroke: none; cursor: pointer; fill: var(--land-none); }
+.area.has-data { fill: var(--land-data); }
+.area.focus { fill: var(--land-focus); }
+.area.hidden-by-regions { display: none; }
+.country-line { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+.country-line.b { stroke-width: .6; opacity: .7; }
+.region-line { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: 5 3.5; stroke-linecap: round; opacity: .9; }
+.focus-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.focus-line.b { stroke-width: .9; opacity: .8; }
+.lake-line { fill: none; stroke: var(--ink); stroke-width: .9; }
+.leader { stroke: var(--ink); stroke-width: .8; fill: none; }
+.area-label { font-family: var(--pen); font-weight: 300; letter-spacing: .12em; fill: var(--ink-soft); pointer-events: none; }
+.area-label.country { font-weight: 400; fill: var(--ink); }
 .river { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
 .water { fill: var(--water); stroke: none; }
-.water-hatch { fill: url(#hatch); stroke: none; }
-.water-line { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; }
+.water-hatch { fill: url(#hatch); stroke: none; pointer-events: none; }
 .city circle { fill: var(--page); stroke: var(--ink); stroke-width: 1.2; }
 .city .dot { fill: var(--ink); stroke: none; }
 .city text { font-family: var(--pen); font-weight: 400; font-size: 12px; letter-spacing: .06em; fill: var(--ink); }
 .city.small text { font-size: 11px; font-weight: 300; }
-.title-label { font-family: var(--pen); font-weight: 700; letter-spacing: .14em; fill: var(--ink); }
-.title-rule { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linecap: round; }
-.neighbour-label { font-family: var(--pen); font-weight: 300; font-size: 17px; letter-spacing: .12em; fill: var(--ink-soft); }
 .icon { fill: var(--land); stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
 .place { cursor: pointer; }
-.place text { font-family: var(--pen); font-weight: 400; font-size: 11px; fill: var(--ink); }
+.cluster { cursor: pointer; }
+.cluster circle { fill: var(--note-yellow); stroke: var(--ink); stroke-width: 1.3; }
+.cluster .ring { fill: none; stroke-width: .8; }
+.cluster text { font-family: var(--pen); font-weight: 700; font-size: 14px; fill: var(--ink); }
+.cluster:focus { outline: none; }
+.cluster:focus-visible circle { stroke-width: 2.4; }
+.place text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
+.place.selected text { font-weight: 700; }
 .place .halo { fill: var(--note-yellow); opacity: 0; transition: opacity .15s; }
 .place:hover .halo, .place:focus-visible .halo, .place.selected .halo { opacity: .95; }
 .place:focus { outline: none; }
@@ -302,6 +342,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
     padding-left: max(16px, env(safe-area-inset-left, 0px));
   }
   /* on phones the note sits under the map, then the list */
+  .map-heading { max-width: calc(100% - 80px); }
   .map-wrap { height: 66vh; min-height: 360px; border-left: 0; box-shadow: none; border-block: 1.5px solid var(--ink); }
   .note { grid-area: note; justify-self: stretch; width: auto; max-height: none; margin: 18px max(16px, env(safe-area-inset-right, 0px)) 4px max(16px, env(safe-area-inset-left, 0px)); }
   .note, .note[data-tone] { transform: rotate(-.6deg); }
