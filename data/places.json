@@ -357,7 +357,7 @@
       "description": "",
       "website": "",
       "contact": "",
-      "open_questions": "Only on the earlier map. Still current?"
+      "open_questions": "From the earlier map; kept."
     },
     {
       "id": "anima-mundi",
@@ -397,20 +397,6 @@
       "open_questions": ""
     },
     {
-      "id": "alveare-che-dice-si",
-      "name": "Alveare che dice sì",
-      "categories": [
-        "association"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
       "id": "fattoria-rancina",
       "name": "Fattoria Rancina",
       "categories": [
@@ -448,48 +434,6 @@
       "open_questions": "Drawn with both the tree and the hand icon."
     },
     {
-      "id": "maciot",
-      "name": "Az. Agricola \"Maciot\"",
-      "categories": [
-        "farm"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
-      "id": "renzo-oliva",
-      "name": "Renzo Oliva",
-      "categories": [
-        "farm"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
-      "id": "crealto",
-      "name": "Agriturismo \"Crealto\"",
-      "categories": [
-        "farm"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
       "id": "amilu-farm",
       "name": "Amilu Farm",
       "categories": [
@@ -505,7 +449,7 @@
       "description": "",
       "website": "",
       "contact": "",
-      "open_questions": "On the map but not in any legend list. Farm?"
+      "open_questions": ""
     },
     {
       "id": "village-forest-school",
@@ -544,20 +488,6 @@
       "open_questions": ""
     },
     {
-      "id": "a-modo-mio",
-      "name": "A Modo Mio (scuola outdoor)",
-      "categories": [
-        "school"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
       "id": "il-bardo",
       "name": "Il Bardo",
       "categories": [
@@ -576,20 +506,6 @@
       "open_questions": ""
     },
     {
-      "id": "biula",
-      "name": "Biula – linfa di betulla",
-      "categories": [
-        "producer"
-      ],
-      "near": "not placed on the map",
-      "location": null,
-      "on_newest_map": false,
-      "description": "",
-      "website": "",
-      "contact": "",
-      "open_questions": "Where is it?"
-    },
-    {
       "id": "selva-viva",
       "name": "Selva Viva",
       "categories": [
@@ -605,7 +521,7 @@
       "description": "",
       "website": "",
       "contact": "",
-      "open_questions": "Only on the earlier map. Still current?"
+      "open_questions": "From the earlier map; kept."
     },
     {
       "id": "dimensione-fiume",
@@ -623,7 +539,93 @@
       "description": "",
       "website": "",
       "contact": "",
-      "open_questions": "Only on the earlier map. Still current?"
+      "open_questions": "From the earlier map; kept."
+    }
+  ],
+  "not_yet_placed": [
+    {
+      "id": "alveare-che-dice-si",
+      "name": "Alveare che dice sì",
+      "categories": [
+        "association"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
+    },
+    {
+      "id": "maciot",
+      "name": "Az. Agricola \"Maciot\"",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
+    },
+    {
+      "id": "renzo-oliva",
+      "name": "Renzo Oliva",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
+    },
+    {
+      "id": "crealto",
+      "name": "Agriturismo \"Crealto\"",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
+    },
+    {
+      "id": "a-modo-mio",
+      "name": "A Modo Mio (scuola outdoor)",
+      "categories": [
+        "school"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
+    },
+    {
+      "id": "biula",
+      "name": "Biula – linfa di betulla",
+      "categories": [
+        "producer"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed."
     }
   ]
 }

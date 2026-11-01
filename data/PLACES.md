@@ -1,8 +1,10 @@
 # Places from the paper map
 
-Transcribed from the photos in `inspiration/`. Locations are rough, based on where each place is drawn. Please correct names, categories and anything marked with a question.
+Transcribed from the photos in `inspiration/`. Locations are rough, based on where each place is drawn.
 
-| Place | Type | Where on the map | Question |
+## On the map
+
+| Place | Type | Where on the map | Note |
 |---|---|---|---|
 | Damanhur (Federazione) | Intentional communities | Valchiusella, near Ivrea |  |
 | OLAT | Intentional communities | west of Ivrea |  |
@@ -20,23 +22,28 @@ Transcribed from the photos in `inspiration/`. Locations are rough, based on whe
 | Casa Germogli | Friendly intentional houses | south of Cuneo |  |
 | La Collina di Levice | Friendly intentional houses | Levice, Alta Langa |  |
 | Bosconauti | Friendly intentional houses | southeast of Tortona | On the earlier map this spot was Casa Marlene. |
-| Casa Marlene | Friendly intentional houses | southeast of Tortona | Only on the earlier map. Still current? |
+| Casa Marlene | Friendly intentional houses | southeast of Tortona | From the earlier map; kept. |
 | Anima Mundi | Associations and foundations | south of Lago Maggiore, Lombardia side |  |
 | Orsolina 28 | Associations and foundations, Farms and agritourism | east of Torino, toward Asti |  |
-| Alveare che dice sì | Associations and foundations | not placed on the map | Where is it? |
 | Fattoria Rancina | Farms and agritourism | south of Lago Maggiore |  |
 | Valli Unite | Farms and agritourism, Associations and foundations | near Tortona | Drawn with both the tree and the hand icon. |
-| Az. Agricola "Maciot" | Farms and agritourism | not placed on the map | Where is it? |
-| Renzo Oliva | Farms and agritourism | not placed on the map | Where is it? |
-| Agriturismo "Crealto" | Farms and agritourism | not placed on the map | Where is it? |
-| Amilu Farm | Farms and agritourism | east of Torino | On the map but not in any legend list. Farm? |
+| Amilu Farm | Farms and agritourism | east of Torino |  |
 | Village Forest School | Kindergartens and schools | east of Torino, next to Orsolina 28 |  |
 | L'Altrove – Voli Erranti | Kindergartens and schools | at L'Altrove |  |
-| A Modo Mio (scuola outdoor) | Kindergartens and schools | not placed on the map | Where is it? |
 | Il Bardo | Micronations | near Mondovì |  |
-| Biula – linfa di betulla | Producers | not placed on the map | Where is it? |
-| Selva Viva | Associations and foundations | south of Lago Maggiore | Only on the earlier map. Still current? |
-| Dimensione Fiume | Friendly intentional houses | near Novara, by the Ticino | Only on the earlier map. Still current? |
+| Selva Viva | Associations and foundations | south of Lago Maggiore | From the earlier map; kept. |
+| Dimensione Fiume | Friendly intentional houses | near Novara, by the Ticino | From the earlier map; kept. |
+
+## Not yet placed
+
+Listed on the paper map but not drawn. Kept here so they are not forgotten; they will be added once their location is known.
+
+- Alveare che dice sì (Associations and foundations)
+- Az. Agricola "Maciot" (Farms and agritourism)
+- Renzo Oliva (Farms and agritourism)
+- Agriturismo "Crealto" (Farms and agritourism)
+- A Modo Mio (scuola outdoor) (Kindergartens and schools)
+- Biula – linfa di betulla (Producers)
 
 ## Categories and icons
 
