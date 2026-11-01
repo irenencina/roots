@@ -304,7 +304,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .focus-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .focus-line.b { stroke-width: .9; opacity: .8; }
 .lake-line { fill: none; stroke: var(--ink); stroke-width: .9; }
-.leader { stroke: var(--ink); stroke-width: .8; fill: none; }
+.leader { stroke: var(--ink); stroke-width: .9; fill: none; }
 .area-label { font-family: var(--pen); font-weight: 300; letter-spacing: .12em; fill: var(--ink-soft); pointer-events: none; }
 .area-label.country { font-weight: 400; fill: var(--ink); }
 .river { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
@@ -322,8 +322,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .cluster text { font-family: var(--pen); font-weight: 700; font-size: 14px; fill: var(--ink); }
 .cluster:focus { outline: none; }
 .cluster:focus-visible circle { stroke-width: 2.4; }
-.place text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
-.place.selected text { font-weight: 700; }
+.place .name-tag { display: none; pointer-events: none; }
+.place:hover .name-tag, .place:focus-visible .name-tag, .place.selected .name-tag { display: inline; }
+.name-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
+.name-tag text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
+.place.selected .name-tag text { font-weight: 700; }
+.place .spot { fill: var(--ink); stroke: var(--page); stroke-width: 1; }
+/* while the map moves: no pen wobble and no labels, so panning and zooming stay smooth */
+#map.moving g { filter: none !important; }
+#map.moving .area-label, #map.moving .city { display: none; }
 .place .halo { fill: var(--note-yellow); opacity: 0; transition: opacity .15s; }
 .place:hover .halo, .place:focus-visible .halo, .place.selected .halo { opacity: .95; }
 .place:focus { outline: none; }

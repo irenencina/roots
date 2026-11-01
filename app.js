@@ -33,7 +33,6 @@
   const NOTE_TONES = ["yellow", "pink", "green"];
   const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
   const RIVER_ZOOM = 12;  // rivers appear when you are close
-  const PLACE_LABEL_FONT = "400 12px Kalam, cursive";
 
   const $ = (id) => document.getElementById(id);
   const svg = $("map");
@@ -46,7 +45,7 @@
 
   const state = {
     places: [], categories: [], catById: {}, notYetPlaced: [],
-    countries: null, lakes: null, rivers: null, cities: [], admin1Index: {},
+    countries: null, lakes: null, rivers: null, riversLoading: null, cities: [], citiesLoading: null, admin1Index: {},
     admin1: {},            // ISO3 -> FeatureCollection (loaded)
     admin1Loading: {},     // ISO3 -> Promise
     regionById: {},        // region id -> feature
@@ -61,6 +60,7 @@
 
   let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
   let layers = {};
+  let moving = false;
 
   // ---------- helpers ----------
   function el(name, attrs, parent) {
@@ -150,7 +150,8 @@
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     const defs = el("defs", {}, svg);
     [["ink-a", 7, 2.4], ["ink-b", 23, 3.2], ["ink-fine", 11, 1.1]].forEach(([id, seed, scale]) => {
-      const f = el("filter", { id, x: "-2%", y: "-2%", width: "104%", height: "104%" }, defs);
+      // filter area = the visible page only; with a zoomed-in world the default area is enormous and slow
+      const f = el("filter", { id, filterUnits: "userSpaceOnUse", x: -20, y: -20, width: W + 40, height: H + 40 }, defs);
       el("feTurbulence", { type: "fractalNoise", baseFrequency: "0.045", numOctaves: "2", seed, result: "n" }, f);
       el("feDisplacementMap", { in: "SourceGraphic", in2: "n", scale, xChannelSelector: "R", yChannelSelector: "G" }, f);
     });
@@ -209,10 +210,16 @@
     });
 
     layers.rivers = el("g", { class: "rivers" }, linesA);
-    state.rivers.features.forEach((f) => {
-      const d = path(f);
-      if (d) el("path", Object.assign({ d, class: "river" }, ns), layers.rivers);
-    });
+    const fb = state.focusCountry && state.admin1Index[state.focusCountry];
+    if (state.rivers && fb) {
+      const [x0, y0, x1, y1] = [fb[0] - 1, fb[1] - 1, fb[2] + 1, fb[3] + 1];
+      state.rivers.features.forEach((f) => {
+        if (!f._bb) { const b = d3.geoBounds(f); f._bb = [b[0][0], b[0][1], b[1][0], b[1][1]]; }
+        if (f._bb[2] < x0 || f._bb[0] > x1 || f._bb[3] < y0 || f._bb[1] > y1) return;
+        const d = path(f);
+        if (d) el("path", Object.assign({ d, class: "river" }, ns), layers.rivers);
+      });
+    }
 
     const focus = state.focusRegion && state.regionById[state.focusRegion];
     if (focus) {
@@ -294,24 +301,6 @@
       placed.push({ p, x, y, x0, y0, w, box });
     });
 
-    // 2. place names, tried on the right, left, below, above; skipped if none fits
-    const nameBoxes = new Map();
-    placed.slice().sort((a, b) => (b.p.id === state.selectedId) - (a.p.id === state.selectedId)).forEach((it) => {
-      const selected = it.p.id === state.selectedId;
-      const font = selected ? "700 12px Kalam, cursive" : PLACE_LABEL_FONT;
-      const tw = textWidth(it.p.name, font) + 2, th = 13;
-      const cands = [
-        { x: it.box.x + it.box.w + 3, y: it.y - th / 2, anchor: "start" },
-        { x: it.box.x - 3 - tw, y: it.y - th / 2, anchor: "start" },
-        { x: it.x - tw / 2, y: it.box.y + it.box.h + 1, anchor: "start" },
-        { x: it.x - tw / 2, y: it.box.y - th - 1, anchor: "start" },
-      ];
-      for (const c of cands) {
-        const b = { x: c.x, y: c.y, w: tw, h: th };
-        if (!hits(b) && inView(b.x, b.y, 0)) { boxes.push(b); nameBoxes.set(it.p.id, b); break; }
-      }
-    });
-
     placed.forEach((it) => {
       const p = it.p;
       const grp = el("g", {
@@ -319,18 +308,25 @@
         tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
       }, g);
       if (Math.hypot(it.x - it.x0, it.y - it.y0) > 2) {
+        // moved aside to make room: a dot on the real spot and a pen line to the icon
         el("path", { class: "leader", d: "M" + it.x0 + " " + it.y0 + "L" + it.x + " " + it.y }, grp);
-        el("circle", { cx: it.x0, cy: it.y0, r: 1.6, fill: "#1b1a17" }, grp);
+        el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
       }
       el("ellipse", { class: "halo", cx: it.x, cy: it.y, rx: it.w / 2 + 5, ry: size / 2 + 5 }, grp);
       p.categories.forEach((c, i) => {
         const ig = el("g", { class: "icon", transform: "translate(" + (it.box.x + i * size) + " " + it.box.y + ") scale(" + size / 24 + ")" }, grp);
         ig.innerHTML = ICONS[c] || ICONS["friendly-house"];
       });
-      const nb = nameBoxes.get(p.id);
-      if (nb) el("text", { x: nb.x, y: nb.y + 10 }, grp).textContent = p.name;
-      el("title", {}, grp).textContent = p.name;
+      // name tag, shown on hover, keyboard focus or selection (CSS); flips left near the right edge
+      const tw = textWidth(p.name, "700 12px Kalam, cursive") + 12;
+      const right = it.box.x + it.box.w + 4 + tw < W;
+      const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
+      const tag = el("g", { class: "name-tag" }, grp);
+      el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
+      el("text", { x: tx + 6, y: it.y + 4 }, tag).textContent = p.name;
     });
+
+    if (moving) return; // labels and towns wait until the map stops moving
 
     // 3. region names (inside countries whose regions are drawn), then country names
     const areaLabels = [];
@@ -338,7 +334,7 @@
     state.countries.features.forEach((f) => areaLabels.push({ f, kind: "country" }));
     areaLabels.forEach(({ f, kind }) => {
       if (kind === "country" && state.admin1[f.properties.a3] && k >= ADMIN_ZOOM) return;
-      const b = path.bounds(f);
+      const b = f._pb || (f._pb = path.bounds(f));
       const wpx = (b[1][0] - b[0][0]) * k, hpx = (b[1][1] - b[0][1]) * k;
       if (wpx < 70 || hpx < 26) return;
       if (!f._anchor) f._anchor = d3.geoCentroid(f);
@@ -357,11 +353,12 @@
 
     // 4. towns: biggest first, only as many as fit
     if (k >= ADMIN_ZOOM) {
-      const minPop = k > 60 ? 15000 : k > 25 ? 60000 : k > 10 ? 250000 : 1000000;
+      const minPop = k > 60 ? 40000 : k > 25 ? 100000 : k > 10 ? 300000 : 1000000;
       let count = 0;
       for (const row of state.cities) {
-        if (count > 60) break;
-        const [name, lng, lat, pop, capital] = row;
+        if (count > 25) break;
+        const [name, lng, lat, pop, capital, a3] = row;
+        if (state.focusCountry && a3 !== state.focusCountry) continue;
         if (pop < minPop && !capital) continue;
         const [x, y] = transform.apply(projection([lng, lat]));
         if (!inView(x, y, 0)) continue;
@@ -383,6 +380,9 @@
         count++;
       }
     }
+    // the selected place and its name tag sit on top of everything
+    const sel = g.querySelector(".place.selected");
+    if (sel) g.appendChild(sel);
   }
 
   // ---------- zoom ----------
@@ -398,14 +398,15 @@
     (opts && opts.instant ? sel : sel.transition().duration(reduceMotion() ? 0 : 750)).call(zoom.transform, t);
   }
 
+  // Only what the current view needs is loaded: a country's regions when you open that country,
+  // towns once you zoom in, rivers once you are close.
   function onZoomEnd() {
-    if (transform.k < ADMIN_ZOOM) return;
-    // load the regions of every country in view
-    const inv = (x, y) => projection.invert(transform.invert([x, y]));
-    const [lw, nn] = inv(0, 0), [le, ns] = inv(W, H);
-    Object.entries(state.admin1Index).forEach(([a3, b]) => {
-      if (b[2] >= lw && b[0] <= le && b[3] >= ns && b[1] <= nn) loadAdmin1(a3);
-    });
+    if (transform.k >= RIVER_ZOOM && !state.rivers && !state.riversLoading) {
+      state.riversLoading = getJSON("data/world/rivers.json").then((r) => { state.rivers = r; buildGeo(); });
+    }
+    if (transform.k >= ADMIN_ZOOM && !state.cities.length && !state.citiesLoading) {
+      state.citiesLoading = getJSON("data/world/cities.json").then((c) => { state.cities = c.rows; scheduleMarks(); });
+    }
   }
 
   // ---------- focus: country, region, place ----------
@@ -560,6 +561,10 @@
       setFocus({ country }, { zoom: true });
     }
   });
+  svg.addEventListener("pointerover", (ev) => {
+    const g = ev.target.closest && ev.target.closest(".place");
+    if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g);
+  });
   svg.addEventListener("keydown", (ev) => {
     const g = ev.target.closest && ev.target.closest(".place");
     if (g && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); select(g.dataset.id); }
@@ -584,8 +589,9 @@
     zoom = d3.zoom()
       .scaleExtent([1, 3000])
       .translateExtent([[-W * 0.2, -H * 0.2], [W * 1.2, H * 1.2]])
+      .on("start", () => { moving = true; svg.classList.add("moving"); })
       .on("zoom", (ev) => { transform = ev.transform; applyTransform(); })
-      .on("end", onZoomEnd);
+      .on("end", () => { moving = false; svg.classList.remove("moving"); onZoomEnd(); scheduleMarks(); });
     d3.select(svg).call(zoom).on("dblclick.zoom", null);
     buildGeo();
   }
@@ -615,8 +621,8 @@
 
   Promise.all([
     getJSON("data/places.json"), getJSON("data/world/countries.json"), getJSON("data/world/lakes.json"),
-    getJSON("data/world/rivers.json"), getJSON("data/world/cities.json"), getJSON("data/admin1/index.json"),
-  ]).then(([places, countries, lakes, rivers, cities, index]) => {
+    getJSON("data/admin1/index.json"),
+  ]).then(([places, countries, lakes, index]) => {
     state.places = places.places;
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
@@ -625,8 +631,6 @@
     rewind(lakes);
     countries.features.forEach((f) => { state.countryById[f.properties.a3] = f; });
     state.lakes = lakes;
-    state.rivers = rivers;
-    state.cities = cities.rows;
     state.admin1Index = index;
     locatePlaces();
     init();
