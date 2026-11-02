@@ -5,48 +5,56 @@
     {
       "id": "intentional-community",
       "label_it": "Comunità intenzionali",
+      "label_es": "Comunidades intencionales",
       "label_en": "Intentional communities",
       "icon": "two little houses side by side"
     },
     {
       "id": "cohousing",
       "label_it": "Cohousing",
+      "label_es": "Cohousing",
       "label_en": "Cohousing",
       "icon": "tall narrow house"
     },
     {
       "id": "friendly-house",
       "label_it": "Case amiche – intenzionali",
+      "label_es": "Casas amigas intencionales",
       "label_en": "Friendly intentional houses",
       "icon": "single small house"
     },
     {
       "id": "association",
       "label_it": "Associazioni – fondazioni",
+      "label_es": "Asociaciones y fundaciones",
       "label_en": "Associations and foundations",
       "icon": "open hand"
     },
     {
       "id": "farm",
       "label_it": "Aziende agricole – agriturismo",
+      "label_es": "Granjas y agroturismo",
       "label_en": "Farms and agritourism",
       "icon": "little tree"
     },
     {
       "id": "school",
       "label_it": "Asili – scuole",
+      "label_es": "Guarderías y escuelas",
       "label_en": "Kindergartens and schools",
       "icon": "star-shaped figure"
     },
     {
       "id": "micronation",
       "label_it": "Micronazioni",
+      "label_es": "Micronaciones",
       "label_en": "Micronations",
       "icon": "flag"
     },
     {
       "id": "producer",
       "label_it": "Produttori",
+      "label_es": "Productores",
       "label_en": "Producers",
       "icon": "round basket / dome"
     }

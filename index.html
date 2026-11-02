@@ -15,25 +15,29 @@
   <header class="head">
     <div class="masthead">
       <h1 class="wordmark">ROOTS</h1>
-      <p class="tagline">Conscious spaces around us</p>
+      <p class="tagline" data-t="tagline">Conscious spaces around us</p>
     </div>
+    <button class="settings-btn" id="settings-btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.3 2.6 2.8-.9.6 2.9 2.9.6-.9 2.8 2.6 1.3-2.6 1.3.9 2.8-2.9.6-.6 2.9-2.8-.9L12 21.2l-1.3-2.6-2.8.9-.6-2.9-2.9-.6.9-2.8L2.7 12l2.6-1.3-.9-2.8 2.9-.6.6-2.9 2.8.9z"/></svg>
+    </button>
+    <div class="settings" id="settings" role="dialog" aria-label="Settings" data-t-label="settings" hidden></div>
   </header>
   <aside class="side">
     <p class="list-title" id="list-title"></p>
-    <nav class="legend" id="legend" aria-label="Places by type"></nav>
-    <p class="credits">Map: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Towns: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0). Ways: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</p>
+    <nav class="legend" id="legend" aria-label="Places by type" data-t-label="byType"></nav>
+    <p class="credits" data-t="credits">Map: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Towns: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0). Ways: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</p>
   </aside>
   <div class="map-wrap">
-    <svg id="map" role="img" aria-label="Hand-drawn world map of conscious places"></svg>
+    <svg id="map" role="img" aria-label="Hand-drawn world map of conscious places" data-t-label="mapLabel"></svg>
     <div class="map-heading">
-      <ol class="crumbs" id="crumbs" aria-label="Where you are"></ol>
+      <ol class="crumbs" id="crumbs" aria-label="Where you are" data-t-label="whereYouAre"></ol>
       <h2 id="map-title">The world</h2>
     </div>
     <div class="modes" id="modes" role="group" aria-label="Ways between places"></div>
     <div class="zoom">
-      <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
-      <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-      <button id="zoom-reset" type="button" aria-label="Zoom out to the whole world">⌂</button>
+      <button id="zoom-in" type="button" aria-label="Zoom in" data-t-label="zoomIn">+</button>
+      <button id="zoom-out" type="button" aria-label="Zoom out" data-t-label="zoomOut">−</button>
+      <button id="zoom-reset" type="button" aria-label="Zoom out to the whole world" data-t-label="zoomReset">⌂</button>
     </div>
   </div>
   <div class="note" id="note" aria-live="polite"><p class="hint">Loading the map…</p></div>
