@@ -1,0 +1,41 @@
+# Routes the connections between places over OpenStreetMap and saves them in
+# data/connections.json. Runs whenever places change, or by hand from the Actions tab.
+name: Build connections
+
+on:
+  push:
+    paths:
+      - data/places.json
+      - tools/build_routes.py
+      - .github/workflows/routes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: routes-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install shapely
+      - name: Route new connections
+        run: python3 tools/build_routes.py
+      - name: Save the result
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain data/connections.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+            git add data/connections.json
+            git commit -m "Update connections between places"
+            git push
+          fi
