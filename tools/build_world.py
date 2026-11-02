@@ -188,6 +188,10 @@ def main():
         if not f["geometry"]:
             continue
         by_country.setdefault(p["adm0_a3"], []).append(f)
+    # every country in detail too (1:10m), simplified together like the world map, for when you
+    # zoom in: neighbours still share one border line, and it follows the regions inside closely
+    detail_src = [f for f in load("10m_admin_0_countries") if f["properties"]["ADM0_A3"] != "ATA"]
+    detail, _ = faces([(f["properties"]["ADM0_A3"], shape(f["geometry"]).buffer(0)) for f in detail_src], 0.004)
     index, total = {}, 0
     for a3, fs in by_country.items():
         if a3 == "ATA":
@@ -204,7 +208,7 @@ def main():
         # regions are simplified together (shared borders stay one line) and trimmed to the
         # country's own shape on the world map, so the country's border is the only outside line
         region_shape, inner = faces([(name, unary_union(gs).buffer(0)) for name, gs in groups.items()], 0.004)
-        land = country_shape.get(a3)
+        land = detail.get(a3)
         out, islands = [], []
         for name in groups:
             g = region_shape.get(name)
@@ -237,6 +241,8 @@ def main():
             borders = only(borders.intersection(land.buffer(-0.002)), "LineString")
         borders = linemerge(borders) if borders.geom_type == "MultiLineString" else borders
         doc = {"type": "FeatureCollection", "country": a3, "features": out}
+        if land is not None and not land.is_empty:
+            doc["land"] = geom(clockwise(land), 4)
         if islands:
             doc["coast"] = geom(unary_union(islands).boundary, 4)
         if not borders.is_empty and borders.geom_type in ("LineString", "MultiLineString"):

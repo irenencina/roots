@@ -51,7 +51,7 @@
       zoomOrTap: "Zoom in or tap a country", worldHint: "Brown areas have places, grey ones are still empty.",
       close: "Close", noDescription: "No description yet.", where: "where", website: "website", contact: "contact", notYet: "not added yet",
       clusterCountry: (n) => n + " places, zoom in", clusterNear: (n) => n + " places close together, zoom in",
-      ways: "Ways between places", car: "Car", bike: "Bike", foot: "Walk",
+      ways: "Transport", car: "Car", bike: "Bike", foot: "Walk",
       byCar: "by car", byBike: "by bike", onFoot: "on foot",
       nearby: (verb) => "Nearby, " + verb, noneNearby: (verb) => "No nearby places to reach " + verb + ".",
       settings: "Settings", language: "Language", showWays: "Show ways up to",
@@ -73,7 +73,7 @@
       zoomOrTap: "Acércate o toca un país", worldHint: "Las zonas marrones tienen lugares, las grises aún están vacías.",
       close: "Cerrar", noDescription: "Aún sin descripción.", where: "dónde", website: "web", contact: "contacto", notYet: "aún no añadido",
       clusterCountry: (n) => n + " lugares, acercar", clusterNear: (n) => n + " lugares muy juntos, acercar",
-      ways: "Caminos entre lugares", car: "Coche", bike: "Bici", foot: "A pie",
+      ways: "Transporte", car: "Coche", bike: "Bici", foot: "A pie",
       byCar: "en coche", byBike: "en bici", onFoot: "a pie",
       nearby: (verb) => "Cerca, " + verb, noneNearby: (verb) => "No hay lugares cercanos " + verb + ".",
       settings: "Ajustes", language: "Idioma", showWays: "Mostrar caminos hasta",
@@ -210,6 +210,7 @@
     if (!state.admin1Index[a3]) return Promise.resolve(null);
     if (!state.admin1Loading[a3]) {
       state.admin1Loading[a3] = getJSON("data/admin1/" + a3 + ".json").then(rewind).then((fc) => {
+        if (fc.land) fc.landFeature = rewind({ features: [{ type: "Feature", geometry: fc.land }] }).features[0];
         state.admin1[a3] = fc;
         fc.features.forEach((f) => { state.regionById[f.properties.id] = f; });
         locatePlaces();
@@ -257,9 +258,13 @@
     const { fills, linesA, linesB } = layers;
     fills.innerHTML = linesA.innerHTML = linesB.innerHTML = "";
 
+    // Zoomed in, a country whose detail is loaded is drawn from it (1:10m), and the countries in
+    // view are loaded too, so neighbours keep sharing one border line that follows the regions.
+    detailShown = transform.k >= ADMIN_ZOOM;
     state.countries.features.forEach((f) => {
       const a3 = f.properties.a3;
-      const d = path(f);
+      const fc = state.admin1[a3];
+      const d = path(detailShown && fc && fc.landFeature ? fc.landFeature : f);
       if (!d) return;
       el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false), "data-country": a3 }, fills);
       // countries are simplified together, so a border shared by two neighbours is the very same
@@ -267,7 +272,10 @@
       el("path", Object.assign({ d, class: "country-line" }, ns), linesA);
     });
 
+    // regions are drawn for the country in focus and the countries with places; neighbours loaded
+    // only for their border stay one plain country
     Object.values(state.admin1).forEach((fc) => {
+      if (fc.country !== state.focusCountry && !state.dataCountries.has(fc.country)) return;
       fc.features.forEach((f) => {
         const id = f.properties.id;
         const d = path(f);
@@ -1101,10 +1109,11 @@
 
     // 3. region names (inside countries whose regions are drawn), then country names
     const areaLabels = [];
-    if (k >= ADMIN_ZOOM) Object.values(state.admin1).forEach((fc) => fc.features.forEach((f) => areaLabels.push({ f, kind: "region" })));
+    const regionsShown = (a3) => !!state.admin1[a3] && (a3 === state.focusCountry || state.dataCountries.has(a3));
+    if (k >= ADMIN_ZOOM) Object.values(state.admin1).forEach((fc) => { if (regionsShown(fc.country)) fc.features.forEach((f) => areaLabels.push({ f, kind: "region" })); });
     state.countries.features.forEach((f) => areaLabels.push({ f, kind: "country" }));
     areaLabels.forEach(({ f, kind }) => {
-      if (kind === "country" && state.admin1[f.properties.a3] && k >= ADMIN_ZOOM) return;
+      if (kind === "country" && regionsShown(f.properties.a3) && k >= ADMIN_ZOOM) return;
       const b = f._pb || (f._pb = path.bounds(f));
       const wpx = (b[1][0] - b[0][0]) * k, hpx = (b[1][1] - b[0][1]) * k;
       if (wpx < 70 || hpx < 26) return;
@@ -1171,7 +1180,19 @@
     d3.select(svg).transition().duration(reduceMotion() ? 0 : 650).call(zoom.transform, t);
   }
 
+  // zoomed in: load the detailed shape of every country in view (a few at most at this zoom)
+  let detailShown = false;
+  function loadCountriesInView() {
+    if (transform.k < ADMIN_ZOOM) return;
+    const corners = [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H]].map((q) => projection.invert(transform.invert(q)));
+    const lon0 = d3.min(corners, (c) => c[0]), lon1 = d3.max(corners, (c) => c[0]);
+    const lat0 = d3.min(corners, (c) => c[1]), lat1 = d3.max(corners, (c) => c[1]);
+    const inView = Object.entries(state.admin1Index).filter(([, b]) => b[0] < lon1 && b[2] > lon0 && b[1] < lat1 && b[3] > lat0);
+    if (inView.length <= 16) inView.forEach(([a3]) => loadAdmin1(a3));
+  }
   function onZoomEnd() {
+    loadCountriesInView();
+    if ((transform.k >= ADMIN_ZOOM) !== detailShown) buildGeo();
     if (transform.k >= RIVER_ZOOM && !state.rivers && !state.riversLoading) {
       state.riversLoading = getJSON("data/world/rivers.json").then((r) => { state.rivers = r; buildGeo(); });
     }

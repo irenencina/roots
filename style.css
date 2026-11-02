@@ -8,6 +8,7 @@
   --land: #ecdcbf;          /* map beige from the paper map (icon fill) */
   --land-none: #d9d5c9;     /* regions with no places yet: grey */
   --land-other: #c9c4b6;    /* countries with no places yet: a darker grey */
+  --river: #7aa9c7;         /* rivers: a light water blue, well apart from the dark car blue */
   --land-data: #e9d8b8;     /* regions with places: brown */
   --land-focus: #ddb995;    /* the region in focus: red-brown */
   --water: #b7c6c6;         /* map grey-blue from the paper map */
@@ -327,7 +328,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .leader { stroke: var(--ink); stroke-width: .9; fill: none; }
 .area-label { font-family: var(--pen); font-weight: 300; letter-spacing: .12em; fill: var(--ink-soft); pointer-events: none; }
 .area-label.country { font-weight: 400; fill: var(--ink); }
-.river { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
+.river { fill: none; stroke: var(--river); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
 .water { fill: var(--water); stroke: none; }
 .water-hatch { fill: url(#hatch); stroke: none; pointer-events: none; }
 .city circle { fill: var(--page); stroke: var(--ink); stroke-width: 1.2; }
