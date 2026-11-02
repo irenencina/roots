@@ -38,6 +38,7 @@
   const $ = (id) => document.getElementById(id);
   const svg = $("map");
   const noteEl = $("note");
+  const modesEl = $("modes");
   const legendEl = $("legend");
   const listTitleEl = $("list-title");
   const crumbsEl = $("crumbs");
@@ -56,6 +57,10 @@
     focusRegion: null,     // region id
     selectedId: null,
     hidden: new Set(),
+    placeById: {},
+    connections: null,
+    mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
+    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
   };
 
   let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
@@ -166,6 +171,8 @@
     layers.linesA = el("g", {}, a);
     const b = el("g", { filter: "url(#ink-b)" }, svg);
     layers.linesB = el("g", {}, b);
+    const r = el("g", { filter: "url(#ink-fine)" }, svg);
+    layers.routes = el("g", { class: "routes" }, r);
     layers.marks = el("g", { filter: "url(#ink-fine)" }, svg);
   }
 
@@ -235,8 +242,80 @@
     layers.fills.setAttribute("transform", t);
     layers.linesA.setAttribute("transform", t);
     layers.linesB.setAttribute("transform", t);
+    layers.routes.setAttribute("transform", t);
     if (layers.rivers) layers.rivers.style.display = transform.k >= RIVER_ZOOM ? "" : "none";
     scheduleMarks();
+  }
+
+  // ---------- connections: a graph of places, each edge following the real way there ----------
+  const MODES = {
+    car: { label: "Car", verb: "by car" },
+    bike: { label: "Bike", verb: "by bike" },
+    foot: { label: "Walk", verb: "on foot" },
+  };
+  const MODE_ICONS = {
+    car: '<path d="M3 15.5v-3l2.2-4.3h10l3.8 4.3H21v3"/><path d="M5.6 12.2h13.2"/><circle cx="7.5" cy="16" r="1.9"/><circle cx="16.8" cy="16" r="1.9"/>',
+    bike: '<circle cx="6" cy="15.5" r="3.6"/><circle cx="18" cy="15.5" r="3.6"/><path d="M6 15.5l4-6.5h6l2 6.5M10 9l2.6 6.5H6M14.5 6.5h2.5"/>',
+    foot: '<circle cx="12.5" cy="4.6" r="1.8"/><path d="M12 7.5l-1.5 6 3.3 3 .9 5M10.5 13.5l-2.4 3.4-1.4 4.6M11.5 9l-3.3 2.3M12.4 9l3.3 2.4 2.1-.4"/>',
+  };
+  function fmtTime(min) {
+    if (min < 60) return min + " min";
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + " h" + (m ? " " + m : "");
+  }
+  function routeOf(e, mode) { return mode && e[mode]; }
+  // the way, from the place itself to the place itself (routes start on the nearest road)
+  function routeCoords(e, r) {
+    const a = state.placeById[e.a], b = state.placeById[e.b];
+    return [lnglat(a)].concat(r.path, [lnglat(b)]);
+  }
+  function drawRoutes() {
+    const g = layers.routes;
+    if (!g) return;
+    g.innerHTML = "";
+    const mode = state.mode, data = state.connections;
+    g.setAttribute("class", "routes " + (mode || "") + (state.selectedId ? " has-selection" : ""));
+    if (!mode || !data) return;
+    const ns = { "vector-effect": "non-scaling-stroke" };
+    data.edges.forEach((e) => {
+      const r = routeOf(e, mode);
+      const a = state.placeById[e.a], b = state.placeById[e.b];
+      if (!r || !a || !b || !a.location || !b.location) return;
+      if (state.hiddenPlace(a) || state.hiddenPlace(b)) return;
+      const d = path({ type: "LineString", coordinates: routeCoords(e, r) });
+      if (!d) return;
+      const lit = state.selectedId && (e.a === state.selectedId || e.b === state.selectedId);
+      const grp = el("g", { class: "route" + (lit ? " lit" : "") }, g);
+      el("path", Object.assign({ d, class: "route-line" }, ns), grp);
+      el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
+      el("title", {}, grp).textContent = a.name + " – " + b.name + ": " + fmtTime(r.min) + " " + MODES[mode].verb + " (" + r.km + " km)";
+    });
+  }
+  function connectionsOf(id, mode) {
+    if (!state.connections || !mode) return [];
+    return state.connections.edges
+      .filter((e) => (e.a === id || e.b === id) && e[mode])
+      .map((e) => ({ other: state.placeById[e.a === id ? e.b : e.a], r: e[mode], e }))
+      .filter((c) => c.other)
+      .sort((u, v) => u.r.min - v.r.min);
+  }
+  function setMode(mode) {
+    state.mode = mode;
+    try { localStorage.setItem("roots-mode", mode || "off"); } catch (err) { /* private window */ }
+    modesEl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    drawRoutes();
+    scheduleMarks();
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p) showPlace(p);
+  }
+  function renderModes() {
+    modesEl.innerHTML = '<span class="modes-title">Ways between places</span><span class="modes-row">' + Object.entries(MODES).map(([m, v]) =>
+      '<button type="button" data-mode="' + m + '" aria-pressed="' + (state.mode === m) + '">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true" class="mode-icon">' + MODE_ICONS[m] + "</svg>" +
+      '<svg viewBox="0 0 30 8" aria-hidden="true" class="swatch ' + m + '"><path d="M1 4.5 Q 8 1.5 15 4 T 29 3.5"/></svg>' +
+      "<span>" + v.label + "</span></button>").join("") + "</span>";
+    modesEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setMode(state.mode === b.dataset.mode ? null : b.dataset.mode)));
+    panelBoxes = null;
   }
 
   // ---------- labels and icons, placed so nothing overlaps ----------
@@ -273,6 +352,17 @@
     if (busy) animFrame = requestAnimationFrame(animate);
   }
 
+  // where the swatch and zoom buttons sit on the map, measured once per layout (not every frame)
+  let panelBoxes = null;
+  function measurePanels() {
+    panelBoxes = [];
+    const M = svg.getScreenCTM();
+    if (M) [modesEl, document.querySelector(".zoom")].forEach((n) => {
+      const r = n && n.getBoundingClientRect();
+      if (r && r.width) panelBoxes.push({ x: (r.left - M.e) / M.a - 4, y: (r.top - M.f) / M.d - 4, w: r.width / M.a + 8, h: r.height / M.d + 8 });
+    });
+  }
+
   function drawMarks() {
     const g = layers.marks;
     g.innerHTML = "";
@@ -284,6 +374,11 @@
     // keep the heading (top-left) and the note (top-right) clear
     if (!narrow()) boxes.push({ x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
     boxes.push({ x: 0, y: 0, w: Math.min(W * 0.55, 440), h: 96 });
+    // and the swatch and zoom buttons along the bottom
+    if (!panelBoxes) measurePanels();
+    panelBoxes.forEach((b) => boxes.push(b));
+    // a place under the swatch or the zoom buttons is treated like one just off the edge of the map
+    const underPanel = (x, y) => panelBoxes.some((b) => x > b.x - 6 && x < b.x + b.w + 6 && y > b.y - 6 && y < b.y + b.h + 6);
 
     const visible = state.places.filter((p) => p.location && !p.categories.every((c) => state.hidden.has(c)));
 
@@ -351,7 +446,7 @@
     const clusterPos = new Map();
     if (k >= ADMIN_ZOOM) visible.forEach((p) => {
       const [x0, y0] = transform.apply(projection(lnglat(p)));
-      if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
+      if (inView(x0, y0, 40) && !underPanel(x0, y0)) pts.push({ p, x0, y0 });
     });
     const reach = size * 1.7;
     const parent = pts.map((_, i) => i);
@@ -568,6 +663,7 @@
       const tw = textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
       const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
+      if (state.selectedId === p.id) boxes.push({ x: tx, y: it.y - 10, w: tw, h: 20 }); // its name is always shown
       const tag = el("g", { class: "name-tag" }, body);
       el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
       el("text", { x: tx + 6, y: it.y + 4 }, tag).textContent = p.name;
@@ -595,6 +691,27 @@
     animate(now);
 
     if (moving) return; // labels and towns wait until the map stops moving
+
+    // 2b. travel times along the selected place's connections, half way along each way
+    if (state.selectedId && state.mode && k >= ADMIN_ZOOM) {
+      connectionsOf(state.selectedId, state.mode).forEach((c) => {
+        const pts = routeCoords(c.e, c.r).map((q) => transform.apply(projection(q)));
+        const label = fmtTime(c.r.min);
+        const tw = textWidth(label, "700 11px Kalam, cursive") + 10;
+        // half way along the way, or the nearest free spot along it
+        let at = null, bx = null;
+        for (const f of [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74]) {
+          const q = pts[Math.min(pts.length - 1, Math.round(f * (pts.length - 1)))];
+          const b = { x: q[0] - tw / 2, y: q[1] - 9, w: tw, h: 18 };
+          if (inView(q[0], q[1], -10) && !hits(b)) { at = q; bx = b; break; }
+        }
+        if (!bx) return;
+        boxes.push(bx);
+        const tg = el("g", { class: "route-time " + state.mode }, g);
+        el("rect", { x: bx.x, y: bx.y, width: tw, height: 18, rx: 8 }, tg);
+        el("text", { x: at[0], y: at[1] + 4, "text-anchor": "middle" }, tg).textContent = label;
+      });
+    }
 
     // 3. region names (inside countries whose regions are drawn), then country names
     const areaLabels = [];
@@ -749,6 +866,7 @@
       head.addEventListener("click", () => {
         if (state.hidden.has(c.id)) state.hidden.delete(c.id); else state.hidden.add(c.id);
         renderList();
+        drawRoutes();
         scheduleMarks();
       });
       group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { zoom: true })));
@@ -777,12 +895,24 @@
       "<p>" + (p.description ? esc(p.description) : "No description yet.") + "</p>" +
       "<dl><dt>where</dt><dd>" + esc(p.near || "") + "</dd>" +
       "<dt>website</dt><dd>" + site + "</dd>" +
-      "<dt>contact</dt><dd>" + (p.contact ? esc(p.contact) : "not added yet") + "</dd></dl>";
+      "<dt>contact</dt><dd>" + (p.contact ? esc(p.contact) : "not added yet") + "</dd></dl>" +
+      connectionsNote(p);
     noteEl.querySelector(".close").addEventListener("click", () => select(null));
+    noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
+  }
+
+  function connectionsNote(p) {
+    if (!state.mode || !state.connections) return "";
+    const cs = connectionsOf(p.id, state.mode);
+    if (!cs.length) return '<p class="ways">No nearby places to reach ' + MODES[state.mode].verb + ".</p>";
+    return '<h3 class="ways-title">Nearby, ' + MODES[state.mode].verb + "</h3><ul class=\"ways\">" + cs.map((c) =>
+      '<li><button type="button" data-go="' + esc(c.other.id) + '">' + esc(c.other.name) + "</button> " +
+      "<span>" + fmtTime(c.r.min) + " · " + c.r.km + " km</span></li>").join("") + "</ul>";
   }
 
   function select(id, opts) {
     state.selectedId = id;
+    drawRoutes();
     const p = id && state.places.find((x) => x.id === id);
     if (!p) {
       showWelcome();
@@ -862,6 +992,8 @@
       .on("end", () => { moving = false; svg.classList.remove("moving"); onZoomEnd(); scheduleMarks(); });
     d3.select(svg).call(zoom).on("dblclick.zoom", null);
     buildGeo();
+    drawRoutes();
+    panelBoxes = null;
   }
 
   let resizeTimer;
@@ -892,6 +1024,11 @@
     getJSON("data/admin1/index.json"),
   ]).then(([places, countries, lakes, index]) => {
     state.places = places.places;
+    state.placeById = Object.fromEntries(state.places.map((p) => [p.id, p]));
+    if (!MODES[state.mode]) state.mode = state.mode ? "bike" : null;
+    renderModes();
+    // the connections are small; draw them as soon as they arrive
+    getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); }).catch(() => {});
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
