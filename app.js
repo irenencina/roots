@@ -61,6 +61,7 @@
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
       search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
       openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
+      sampleNote: "Sample details, made up for testing. They are not real information about this place.",
       offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
       found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
@@ -87,6 +88,7 @@
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
       search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
       openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
+      sampleNote: "Datos de ejemplo, inventados para probar. No es información real sobre este lugar.",
       offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
       found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
@@ -1452,6 +1454,7 @@
       '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
       '<header><h2 id="sheet-title">' + esc(p.name) + '</h2><div class="kinds">' + kinds + "</div>" +
       (where ? '<p class="where">' + esc(where) + "</p>" : "") + "</header>" +
+      (p.sample ? '<p class="sample-note" role="note">' + t("sampleNote") + "</p>" : "") +
       (count ? body : '<p class="empty">' + t("profileEmpty") + "</p>") + "</article>";
     sheetEl.hidden = false;
     document.body.classList.add("sheet-open");
