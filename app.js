@@ -33,7 +33,6 @@
   const NOTE_TONES = ["yellow", "pink", "green"];
   const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
   const RIVER_ZOOM = 12;  // rivers appear when you are close
-  const SPREAD_ZOOM = 40; // from here, small groups fan out instead of showing a number
   const SPREAD_MAX = 6;   // bigger groups always stay a numbered circle
 
   const $ = (id) => document.getElementById(id);
@@ -250,7 +249,7 @@
   }
 
   const GLIDE = 320; // ms
-  let anims = [], prevClusters = new Map(), animFrame = 0;
+  let anims = [], prevClusters = new Map(), animFrame = 0, lastK = 0;
   function animate(now) {
     cancelAnimationFrame(animFrame);
     let busy = false;
@@ -306,37 +305,20 @@
       });
     }
 
-    // 1. places that crowd the same spot on screen are grouped. Zoomed out, a group is one
-    //    numbered circle; closer in, its icons fan out around the centre, each with a dot on
-    //    its real spot and a pen line to the icon.
+    // 1. places that crowd the same spot on screen are grouped (single linkage: a place joins a
+    //    group when it is within `reach` of any member; screen distances only grow as you zoom in,
+    //    so groups only ever split). Then every icon is laid out with an anchored force layout:
+    //    each icon is pulled towards its real spot and pushed away from other icons, starting from
+    //    where it was last shown. A group whose icons would end up far from their spots, or whose
+    //    pen lines would cross another icon, is drawn as a numbered circle instead.
     const size = Math.max(18, Math.min(28, 14 + Math.log2(k) * 2));
-    const placed = [];
-    const placeIcon = (q, x, y, fanned) => {
-      const w = size * q.p.categories.length;
-      let box = { x: x - w / 2, y: y - size / 2, w, h: size };
-      if (hits(box)) {
-        // look for the nearest free spot around where the icon wanted to go, so icons never overlap
-        const cx = fanned ? x : q.x0, cy = fanned ? y : q.y0;
-        for (let ring = 1; ring <= 8 && hits(box); ring++) {
-          for (let i = 0; i < 12; i++) {
-            const a = (i / 12) * Math.PI * 2 + ring * 0.4 + Math.atan2(cy - q.y0, cx - q.x0);
-            const nx = cx + Math.cos(a) * size * 0.6 * ring, ny = cy + Math.sin(a) * size * 0.6 * ring;
-            const nb = { x: nx - w / 2, y: ny - size / 2, w, h: size };
-            if (!hits(nb)) { x = nx; y = ny; box = nb; break; }
-          }
-        }
-      }
-      boxes.push(box);
-      placed.push({ p: q.p, x, y, x0: q.x0, y0: q.y0, w, box });
-    };
+    const MAX_SHIFT = size * 2;
     const pts = [];
     const clusterPos = new Map();
     if (k >= ADMIN_ZOOM) visible.forEach((p) => {
       const [x0, y0] = transform.apply(projection(lnglat(p)));
       if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
     });
-    // Places join a group when they are within `reach` of any member (single linkage). Screen
-    // distances only grow as you zoom in, so groups only ever split, never re-form.
     const reach = size * 1.7;
     const parent = pts.map((_, i) => i);
     const root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i])));
@@ -349,41 +331,157 @@
     });
     const byRoot = new Map();
     pts.forEach((q, i) => { const r = root(i); if (!byRoot.has(r)) byRoot.set(r, []); byRoot.get(r).push(q); });
-    const groups = [...byRoot.values()].map((members) => ({ members, x: d3.mean(members, (q) => q.x0), y: d3.mean(members, (q) => q.y0) }));
-    groups.sort((a, b) => b.members.length - a.members.length).forEach((G) => {
-      const n = G.members.length;
-      if (n === 1) return placeIcon(G.members[0], G.members[0].x0, G.members[0].y0, false);
-      if (n <= SPREAD_MAX && k >= SPREAD_ZOOM) {
-        // each icon goes in the direction of its real spot, so the pen lines never cross
-        const rad = size * (n <= 2 ? 0.85 : n <= 4 ? 1.15 : 1.5);
-        const ms = G.members.map((q) => ({ q, a: Math.atan2(q.y0 - G.y, q.x0 - G.x) })).sort((u, v) => u.a - v.a);
-        const step = (2 * Math.PI) / n;
-        let best = 0, bestCost = Infinity;
-        for (let t = 0; t < 24; t++) {
-          const off = (t / 24) * step;
-          const cost = ms.reduce((s, m, i) => { const d = Math.abs(((m.a - (-Math.PI + off + i * step)) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); return s + d * d; }, 0);
-          if (cost < bestCost) { bestCost = cost; best = off; }
-        }
-        const slots = ms.map((m, i) => {
-          const a = -Math.PI + best + i * step, w = size * m.q.p.categories.length;
-          const x = G.x + Math.cos(a) * rad, y = G.y + Math.sin(a) * rad;
-          return { q: m.q, x, y, box: { x: x - w / 2, y: y - size / 2, w, h: size } };
-        });
-        // once a group has fanned out it stays fanned: if it would run into something already
-        // drawn, it opens a little wider instead of folding back into a circle
-        let grow = 1;
-        while (grow < 2.2 && slots.some((s) => hits(s.box))) {
-          grow += 0.2;
-          slots.forEach((s, i) => {
-            const a = -Math.PI + best + i * step, w = s.box.w;
-            s.x = G.x + Math.cos(a) * rad * grow; s.y = G.y + Math.sin(a) * rad * grow;
-            s.box = { x: s.x - w / 2, y: s.y - size / 2, w, h: size };
-          });
-        }
-        slots.forEach((s) => placeIcon(s.q, s.x, s.y, true));
-        return;
+    const groups = [...byRoot.values()].map((members) => ({
+      members, x: d3.mean(members, (q) => q.x0), y: d3.mean(members, (q) => q.y0),
+      circle: members.length > SPREAD_MAX,
+    }));
+    const lastOffset = new Map(anims.filter((a) => !a.ghost).map((a) => [a.p.id, [a.vx, a.vy]]));
+    // remember what was shown, so zooming only ever moves one way: zooming in, a group that was
+    // spread out stays spread out; zooming out, anything that was in a circle stays in a circle
+    const zoomingIn = k >= lastK * 0.999, zoomingOut = k <= lastK * 1.001;
+    groups.forEach((G) => {
+      G.r = 10 + Math.min(9, Math.sqrt(G.members.length) * 2);
+      G.locked = zoomingIn && G.members.length > 1 && G.members.every((q) => lastOffset.has(q.p.id));
+      if (zoomingOut && G.members.length > 1 && G.members.some((q) => prevClusters.has(q.p.id))) G.circle = true;
+    });
+    lastK = k;
+
+    const staticBoxes = boxes.slice(); // heading, note, country circles
+    const rectHit = (b, list) => list.some((o) => b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y);
+    // does the segment (x1,y1)-(x2,y2) pass through box b? (Liang–Barsky clipping)
+    const segHits = (x1, y1, x2, y2, b) => {
+      let t0 = 0, t1 = 1;
+      const dx = x2 - x1, dy = y2 - y1;
+      const edges = [[-dx, x1 - b.x], [dx, b.x + b.w - x1], [-dy, y1 - b.y], [dy, b.y + b.h - y1]];
+      for (const [pp, qq] of edges) {
+        if (pp === 0) { if (qq < 0) return false; continue; }
+        const t = qq / pp;
+        if (pp < 0) { if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
       }
-      const r = 10 + Math.min(9, Math.sqrt(n) * 2);
+      return true;
+    };
+    const boxOf = (n) => ({ x: n.x - n.w / 2, y: n.y - size / 2, w: n.w, h: size });
+
+    let nodes = [];
+    for (let round = 0; round < 4; round++) {
+      // icons that spread out, plus circles as fixed obstacles
+      nodes = [];
+      groups.forEach((G) => {
+        if (G.circle) { nodes.push({ circle: G, x: G.x, y: G.y, fx: G.x, fy: G.y, r: G.r + 4 }); return; }
+        G.members.forEach((q, i) => {
+          const w = size * q.p.categories.length;
+          const n = { q, G, ax: q.x0, ay: q.y0, w, r: Math.max(w, size) / 2 + 3 };
+          const last = lastOffset.get(q.p.id);
+          if (last) { n.x = q.x0 + last[0]; n.y = q.y0 + last[1]; }
+          else if (clusterPos.has(q.p.id) || G.members.length > 1) {
+            // start just outside the group centre, in the direction of the real spot
+            let ux = q.x0 - G.x, uy = q.y0 - G.y, d = Math.hypot(ux, uy);
+            if (d < 0.5) { ux = Math.cos(i * 2.4); uy = Math.sin(i * 2.4); d = 1; }
+            n.x = q.x0 + (ux / d) * size * 0.6; n.y = q.y0 + (uy / d) * size * 0.6;
+          } else { n.x = q.x0; n.y = q.y0; }
+          if (q.p.id === state.selectedId) { n.fx = q.x0; n.fy = q.y0; }
+          nodes.push(n);
+        });
+      });
+      // keep icons out of the heading and the note
+      const avoidRects = () => {
+        nodes.forEach((n) => {
+          if (n.fx !== undefined) return;
+          staticBoxes.forEach((o) => {
+            const b = boxOf(n);
+            if (!(b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y)) return;
+            const push = [[o.x - (b.x + b.w), 0], [o.x + o.w - b.x, 0], [0, o.y - (b.y + b.h)], [0, o.y + o.h - b.y]]
+              .sort((u, v) => Math.hypot(...u) - Math.hypot(...v))[0];
+            n.x += push[0] * 0.5; n.y += push[1] * 0.5;
+          });
+        });
+      };
+      // keep icons off other places' dots and pen lines
+      const avoidLines = (alpha) => {
+        const icons = nodes.filter((n) => !n.circle);
+        icons.forEach((n) => {
+          if (n.fx !== undefined) return;
+          icons.forEach((o) => {
+            if (o === n || Math.abs(o.ax - n.x) > size * 4 || Math.abs(o.ay - n.y) > size * 4) return;
+            // nearest point to n on o's line, from o's spot to o's icon
+            const vx = o.x - o.ax, vy = o.y - o.ay, L2 = vx * vx + vy * vy;
+            const t = L2 ? Math.max(0, Math.min(1, ((n.x - o.ax) * vx + (n.y - o.ay) * vy) / L2)) : 0;
+            if (t > 0.85 && L2) return; // that end is o's own icon
+            const px = o.ax + vx * t, py = o.ay + vy * t;
+            let dx = n.x - px, dy = n.y - py, d = Math.hypot(dx, dy);
+            const need = Math.max(n.w, size) / 2 + 2;
+            if (d >= need) return;
+            if (d < 0.01) { dx = -vy || 1; dy = vx; d = Math.hypot(dx, dy); }
+            const push = (need - d) * Math.max(alpha, 0.3);
+            n.vx += (dx / d) * push; n.vy += (dy / d) * push;
+          });
+        });
+      };
+      let seed = 7;
+      const sim = d3.forceSimulation(nodes)
+        .randomSource(() => ((seed = (seed * 16807) % 2147483647) / 2147483647))
+        .force("x", d3.forceX((n) => (n.ax !== undefined ? n.ax : n.x)).strength(0.2))
+        .force("y", d3.forceY((n) => (n.ay !== undefined ? n.ay : n.y)).strength(0.2))
+        .force("collide", d3.forceCollide((n) => n.r).strength(0.9).iterations(4))
+        .force("rects", avoidRects)
+        .force("lines", avoidLines)
+        .stop();
+      for (let i = 0; i < 160; i++) sim.tick();
+
+      const icons = nodes.filter((n) => !n.circle);
+      // untangle: swap two icons of the same group when that stops a pen line running through an icon
+      const crossings = (n) => nodes.reduce((c, o) => {
+        if (o === n) return c;
+        const b = o.circle ? { x: o.x - o.r, y: o.y - o.r, w: 2 * o.r, h: 2 * o.r } : boxOf(o);
+        return c + (segHits(n.ax, n.ay, n.x, n.y, { x: b.x + 3, y: b.y + 3, w: b.w - 6, h: b.h - 6 }) ? 1 : 0);
+      }, 0);
+      for (let pass = 0; pass < 2; pass++) icons.forEach((a) => icons.forEach((b) => {
+        if (a === b || a.G !== b.G || a.w !== b.w || a.fx !== undefined || b.fx !== undefined) return;
+        const before = crossings(a) + crossings(b) + Math.hypot(a.x - a.ax, a.y - a.ay) / 1000 + Math.hypot(b.x - b.ax, b.y - b.ay) / 1000;
+        [a.x, b.x, a.y, b.y] = [b.x, a.x, b.y, a.y];
+        const after = crossings(a) + crossings(b) + Math.hypot(a.x - a.ax, a.y - a.ay) / 1000 + Math.hypot(b.x - b.ax, b.y - b.ay) / 1000;
+        if (after >= before) [a.x, b.x, a.y, b.y] = [b.x, a.x, b.y, a.y];
+      }));
+
+      // check every spread group: icons near their spots, no overlaps, no pen line through an icon
+      const solid = nodes.map((n) => (n.circle ? { x: n.x - n.r, y: n.y - n.r, w: 2 * n.r, h: 2 * n.r, n } : Object.assign(boxOf(n), { n })));
+      const bad = new Set();
+      icons.forEach((n) => {
+        const b = boxOf(n);
+        const shift = Math.hypot(n.x - n.ax, n.y - n.ay);
+        let fail = shift > MAX_SHIFT || rectHit(b, staticBoxes) ||
+          solid.some((o) => o.n !== n && b.x < o.x + o.w - 2 && b.x + b.w > o.x + 2 && b.y < o.y + o.h - 2 && b.y + b.h > o.y + 2);
+        if (!fail && shift > 4) {
+          fail = solid.some((o) => o.n !== n && segHits(n.ax, n.ay, n.x, n.y, { x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 }));
+        }
+        if (!fail) return;
+        if (n.G.locked) return;
+        if (n.G.members.length > 1) bad.add(n.G);
+        else {
+          // a lone icon pushed away: fold the nearest spread group instead
+          let best = null, bd = Infinity;
+          groups.forEach((G) => {
+            if (G.circle || G.locked || G.members.length < 2) return;
+            const d = Math.hypot(G.x - n.ax, G.y - n.ay);
+            if (d < bd) { bd = d; best = G; }
+          });
+          if (best && bd < MAX_SHIFT * 3) bad.add(best);
+        }
+      });
+      if (!bad.size) break;
+      bad.forEach((G) => { G.circle = true; G.members.forEach((q) => clusterPos.set(q.p.id, [G.x, G.y, G.x - q.x0, G.y - q.y0])); });
+    }
+
+    const placed = [];
+    nodes.forEach((n) => {
+      if (n.circle) return;
+      const box = boxOf(n);
+      boxes.push(box);
+      placed.push({ p: n.q.p, x: n.x, y: n.y, x0: n.ax, y0: n.ay, w: n.w, box });
+    });
+    groups.forEach((G) => {
+      if (!G.circle) return;
+      const n = G.members.length, r = G.r;
       G.members.forEach((q) => clusterPos.set(q.p.id, [G.x, G.y, G.x - q.x0, G.y - q.y0]));
       const ids = G.members.map((q) => q.p.id).join(" ");
       const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-ids": ids, "aria-label": n + " places close together, zoom in" }, g);
