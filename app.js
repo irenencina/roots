@@ -39,7 +39,6 @@
   const svg = $("map");
   const noteEl = $("note");
   const legendEl = $("legend");
-  const unplacedEl = $("unplaced");
   const listTitleEl = $("list-title");
   const crumbsEl = $("crumbs");
   const mapTitleEl = $("map-title");
@@ -305,6 +304,41 @@
       });
     }
 
+    // 0b. towns of the focused country: regional and national capitals get a circled dot, other
+    //     big towns a plain circle. Their dots are reserved before the icons are laid out, so a
+    //     place never hides a town; the names are added at the end where they fit.
+    const towns = [];
+    const spots = k >= ADMIN_ZOOM ? visible.map((p) => transform.apply(projection(lnglat(p)))) : [];
+    const nearSpot = (bx) => spots.some(([x, y]) => x > bx.x - 8 && x < bx.x + bx.w + 8 && y > bx.y - 8 && y < bx.y + bx.h + 8);
+    if (k >= ADMIN_ZOOM) {
+      const minPop = k > 60 ? 100000 : k > 25 ? 250000 : k > 10 ? 500000 : 1500000;
+      for (const row of state.cities) {
+        if (towns.length >= 40) break;
+        const [name, lng, lat, pop, rank, a3] = row;
+        if (state.focusCountry && a3 !== state.focusCountry) continue;
+        if (!(rank === 2 || (rank === 1 && k > 8) || pop >= minPop)) continue;
+        const [x, y] = transform.apply(projection([lng, lat]));
+        if (!inView(x, y, -10)) continue;
+        const r = rank === 2 ? 4.5 : pop > 200000 ? 3.6 : 3;
+        const dot = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
+        if (hits(dot)) continue;
+        const t = { name, x, y, r, capital: rank === 2 };
+        if (t.capital) {
+          // capitals keep their name too: reserve the first free spot for it now
+          const tw = textWidth(name.toUpperCase(), "400 11px Kalam, cursive") * 1.08;
+          const cands = [{ x: x + r + 3, y: y - 13 }, { x: x - r - 3 - tw, y: y - 13 }, { x: x + r + 3, y: y + 2 }, { x: x - r - 3 - tw, y: y + 2 },
+            { x: x - tw / 2, y: y - r - 15 }, { x: x - tw / 2, y: y + r + 3 }, { x: x + r + 3, y: y - 6 }, { x: x - r - 3 - tw, y: y - 6 }]
+            .map((c) => ({ x: c.x, y: c.y, w: tw, h: 12 }));
+          // prefer a spot away from places (so no pen line has to cross the name), but always show it
+          t.lb = cands.find((bx) => !hits(bx) && !nearSpot(bx)) || cands.find((bx) => !hits(bx));
+          if (!t.lb) continue;
+          boxes.push(t.lb);
+        }
+        boxes.push(dot);
+        towns.push(t);
+      }
+    }
+
     // 1. places that crowd the same spot on screen are grouped (single linkage: a place joins a
     //    group when it is within `reach` of any member; screen distances only grow as you zoom in,
     //    so groups only ever split). Then every icon is laid out with an anchored force layout:
@@ -384,15 +418,16 @@
         });
       });
       // keep icons out of the heading and the note
-      const avoidRects = () => {
+      const avoidRects = (full) => {
+        const f = full === undefined ? 0.8 : 1;
         nodes.forEach((n) => {
           if (n.fx !== undefined) return;
           staticBoxes.forEach((o) => {
-            const b = boxOf(n);
+            const b0 = boxOf(n), b = { x: b0.x - 3, y: b0.y - 3, w: b0.w + 6, h: b0.h + 6 };
             if (!(b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y)) return;
             const push = [[o.x - (b.x + b.w), 0], [o.x + o.w - b.x, 0], [0, o.y - (b.y + b.h)], [0, o.y + o.h - b.y]]
               .sort((u, v) => Math.hypot(...u) - Math.hypot(...v))[0];
-            n.x += push[0] * 0.5; n.y += push[1] * 0.5;
+            n.x += push[0] * f; n.y += push[1] * f;
           });
         });
       };
@@ -427,6 +462,7 @@
         .force("lines", avoidLines)
         .stop();
       for (let i = 0; i < 160; i++) sim.tick();
+      for (let i = 0; i < 4; i++) avoidRects(1 / 0.8); // finish by moving icons fully clear of reserved spots
 
       const icons = nodes.filter((n) => !n.circle);
       // untangle: swap two icons of the same group when that stops a pen line running through an icon
@@ -452,7 +488,8 @@
         let fail = shift > MAX_SHIFT || rectHit(b, staticBoxes) ||
           solid.some((o) => o.n !== n && b.x < o.x + o.w - 2 && b.x + b.w > o.x + 2 && b.y < o.y + o.h - 2 && b.y + b.h > o.y + 2);
         if (!fail && shift > 4) {
-          fail = solid.some((o) => o.n !== n && segHits(n.ax, n.ay, n.x, n.y, { x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 }));
+          fail = solid.some((o) => o.n !== n && segHits(n.ax, n.ay, n.x, n.y, { x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 })) ||
+            staticBoxes.some((o) => segHits(n.ax, n.ay, n.x, n.y, o));
         }
         if (!fail) return;
         if (n.G.locked) return;
@@ -582,35 +619,23 @@
       el("text", { x, y: y + fs * 0.35, class: "area-label " + kind, "text-anchor": "middle", style: "font-size:" + fs.toFixed(1) + "px" }, g).textContent = text;
     });
 
-    // 4. towns: biggest first, only as many as fit
-    if (k >= ADMIN_ZOOM) {
-      const minPop = k > 60 ? 40000 : k > 25 ? 100000 : k > 10 ? 300000 : 1000000;
-      let count = 0;
-      for (const row of state.cities) {
-        if (count > 25) break;
-        const [name, lng, lat, pop, capital, a3] = row;
-        if (state.focusCountry && a3 !== state.focusCountry) continue;
-        if (pop < minPop && !capital) continue;
-        const [x, y] = transform.apply(projection([lng, lat]));
-        if (!inView(x, y, 0)) continue;
-        const big = pop > 1000000 || capital;
-        const r = big ? 4.5 : pop > 200000 ? 3.6 : 2.6;
-        const font = (big ? "400 " : "300 ") + "11px Kalam, cursive";
-        const label = name.toUpperCase();
-        const tw = textWidth(label, font) * 1.08;
-        const dot = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
-        if (hits(dot)) continue;
-        const cands = [{ x: x + r + 3, y: y - 13 }, { x: x - r - 3 - tw, y: y - 13 }, { x: x + r + 3, y: y + 2 }, { x: x - r - 3 - tw, y: y + 2 }];
-        const lb = cands.map((c) => ({ x: c.x, y: c.y, w: tw, h: 12 })).find((b) => !hits(b));
-        if (!lb) continue;
-        boxes.push(dot, lb);
-        const cg = el("g", { class: "city" + (big ? "" : " small") }, g);
-        el("circle", { cx: x, cy: y, r }, cg);
-        if (big) el("circle", { class: "dot", cx: x, cy: y, r: 1.4 }, cg);
-        el("text", { x: lb.x, y: lb.y + 10 }, cg).textContent = label;
-        count++;
-      }
-    }
+    // 4. town names, next to the dots reserved above
+    towns.forEach((t) => {
+      const font = (t.capital ? "400 " : "300 ") + "11px Kalam, cursive";
+      const label = t.name.toUpperCase();
+      const tw = textWidth(label, font) * 1.08;
+      const { x, y, r } = t;
+      const cands = [{ x: x + r + 3, y: y - 13 }, { x: x - r - 3 - tw, y: y - 13 }, { x: x + r + 3, y: y + 2 }, { x: x - r - 3 - tw, y: y + 2 }];
+      const lb = t.lb || cands.map((c) => ({ x: c.x, y: c.y, w: tw, h: 12 }))
+        .find((bx) => !hits(bx) && !placed.some((it) => Math.hypot(it.x - it.x0, it.y - it.y0) > 4 &&
+          segHits(it.x0, it.y0, it.x, it.y, { x: bx.x - 3, y: bx.y - 3, w: bx.w + 6, h: bx.h + 6 })));
+      if (!lb) return;
+      if (!t.lb) boxes.push(lb);
+      const cg = el("g", { class: "city" + (t.capital ? "" : " small") }, g);
+      el("circle", { cx: x, cy: y, r }, cg);
+      if (t.capital) el("circle", { class: "dot", cx: x, cy: y, r: 1.4 }, cg);
+      el("text", { x: lb.x, y: lb.y + 10 }, cg).textContent = label;
+    });
     // the selected place and its name tag sit on top of everything
     const sel = g.querySelector(".place.selected");
     if (sel) g.appendChild(sel);
@@ -678,7 +703,9 @@
     }
     const r = state.focusRegion && state.regionById[state.focusRegion];
     if (r) title = r.properties.name;
-    mapTitleEl.textContent = title;
+    // the name of the area, with how many places it has in a pen-drawn circle
+    const n = placesInFocus().length;
+    mapTitleEl.innerHTML = esc(title) + (n ? ' <span class="title-count" title="' + n + " place" + (n === 1 ? "" : "s") + ' on the map">' + n + "</span>" : "");
     crumbsEl.innerHTML = "";
     if (c) crumbs.forEach((cr) => {
       const li = document.createElement("li");
@@ -705,9 +732,8 @@
 
   function renderList() {
     const here = placesInFocus();
-    listTitleEl.innerHTML = here.length
-      ? "<b>" + here.length + "</b> place" + (here.length === 1 ? "" : "s") + " in " + esc(focusName())
-      : "No places in " + esc(focusName()) + " yet";
+    listTitleEl.hidden = here.length > 0;
+    listTitleEl.textContent = here.length ? "" : "No places in " + focusName() + " yet";
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {
       const places = here.filter((p) => p.categories.includes(c.id));
@@ -728,10 +754,6 @@
       group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { zoom: true })));
       legendEl.appendChild(group);
     });
-    const np = state.notYetPlaced.filter((p) =>
-      state.focusRegion ? p.region === state.focusRegion : state.focusCountry ? String(p.region).startsWith(state.focusCountry + "-") : true);
-    unplacedEl.hidden = !np.length;
-    if (np.length) unplacedEl.innerHTML = "<h3>Not on the map yet</h3><p>" + np.map((p) => esc(p.name)).join(", ") + ".</p>";
   }
 
   // ---------- note ----------

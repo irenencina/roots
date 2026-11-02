@@ -4,13 +4,15 @@ Writes small files the website loads on demand:
   data/world/countries.json   every country (1:50m), for the zoomed-out view
   data/world/lakes.json       big lakes
   data/world/rivers.json      main rivers
-  data/world/cities.json      towns and cities with population, for labels
+  data/world/cities.json      towns and cities (GeoNames cities15000, CC BY 4.0), for labels
   data/admin1/<ISO3>.json     the regions of one country (provinces, states, regions),
                               loaded only when you zoom into that country
   data/admin1/index.json      which countries have a regions file, with their bounding boxes
 
 Run:  pip install shapely && python3 tools/build_world.py
 Natural Earth files are downloaded once into .cache/.
+Towns come from GeoNames (https://www.geonames.org, CC BY 4.0): cities15000.txt is downloaded
+into .cache/ from download.geonames.org, or from a mirror of the same file on GitHub.
 """
 import json, os, re, unicodedata, urllib.request
 from shapely.geometry import shape, mapping
@@ -20,6 +22,10 @@ from shapely.ops import unary_union
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, ".cache")
 NE = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_{}.geojson"
+GEONAMES = [
+    "https://download.geonames.org/export/dump/cities15000.zip",
+    "https://raw.githubusercontent.com/elyase/geotext/master/geotext/data/cities15000.txt",
+]
 
 
 def load(name):
@@ -29,6 +35,23 @@ def load(name):
         print("downloading", name)
         urllib.request.urlretrieve(NE.format(name), path)
     return json.load(open(path, encoding="utf-8"))["features"]
+
+
+def geonames_file():
+    path = os.path.join(CACHE, "cities15000.txt")
+    for url in GEONAMES if not os.path.exists(path) else []:
+        try:
+            print("downloading", url)
+            if url.endswith(".zip"):
+                import io, zipfile
+                data = urllib.request.urlopen(url).read()
+                open(path, "wb").write(zipfile.ZipFile(io.BytesIO(data)).read("cities15000.txt"))
+            else:
+                urllib.request.urlretrieve(url, path)
+            break
+        except Exception as e:
+            print("  failed:", e)
+    return path
 
 
 def rnd(c, n):
@@ -90,17 +113,24 @@ def main():
         rivers.append({"type": "Feature", "properties": {"rank": f["properties"]["scalerank"]}, "geometry": geom(g, 3)})
     print("rivers", write("data/world/rivers.json", {"type": "FeatureCollection", "features": rivers}) // 1024, "KB")
 
-    cities = []
-    for f in load("10m_populated_places_simple"):
+    # towns: rank 2 = national or regional capital (drawn as a circled dot), 1 = provincial
+    # capital, 0 = other town. Kept: every capital, plus other towns from 100 000 people.
+    iso2 = {}
+    for f in load("10m_admin_0_countries"):
         p = f["properties"]
-        pop = p.get("pop_max") or 0
-        capital = "capital" in (p.get("featurecla") or "").lower()
-        if pop < 15000 and not capital:
+        for key in ("ISO_A2", "ISO_A2_EH", "WB_A2"):
+            if p.get(key) and p[key] != "-99":
+                iso2.setdefault(p[key], p["ADM0_A3"])
+    rank_of = {"PPLC": 2, "PPLA": 2, "PPLA2": 1}
+    cities = []
+    for line in open(geonames_file(), encoding="utf-8"):
+        c = line.rstrip("\n").split("\t")
+        rank, pop = rank_of.get(c[7], 0), int(c[14] or 0)
+        if c[7] in ("PPLX", "PPLH", "PPLQ", "PPLW") or (rank == 0 and pop < 100000) or c[8] not in iso2:
             continue
-        c = f["geometry"]["coordinates"]
-        cities.append([p["name"], round(c[0], 3), round(c[1], 3), int(pop), 1 if capital else 0, p.get("adm0_a3")])
-    cities.sort(key=lambda r: -r[3])
-    print("cities", len(cities), write("data/world/cities.json", {"fields": ["name", "lng", "lat", "population", "capital", "country"], "rows": cities}) // 1024, "KB")
+        cities.append([c[1], round(float(c[5]), 3), round(float(c[4]), 3), pop, rank, iso2[c[8]]])
+    cities.sort(key=lambda r: (-r[4], -r[3]))
+    print("cities", len(cities), write("data/world/cities.json", {"fields": ["name", "lng", "lat", "population", "rank", "country"], "source": "GeoNames, CC BY 4.0", "rows": cities}) // 1024, "KB")
 
     # regions per country: dissolve admin-1 units into the level people talk about
     # (Italy's provinces become its 20 regions; the Netherlands keeps its 12 provinces)

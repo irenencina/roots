@@ -12,7 +12,7 @@ Roots is one world map. Zoom out to see every country (a circled number shows ho
 - `data/places.json`: every place in the world with its location, plus the categories and their icons
 - `data/world/`: countries, lakes, rivers and towns for the whole world
 - `data/admin1/<ISO3>.json`: the regions of one country, loaded only when you zoom into it; `index.json` lists them
-- `tools/build_world.py`: rebuilds `data/world` and `data/admin1` from Natural Earth (public domain)
+- `tools/build_world.py`: rebuilds `data/world` and `data/admin1` from Natural Earth (public domain). Town names and positions come from [GeoNames](https://www.geonames.org) (CC BY 4.0).
 - `data/PLACES.md`: readable list of the Piemonte places
 - `inspiration/`: photos of the Piemonte paper map
 
