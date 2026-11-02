@@ -249,6 +249,32 @@
     requestAnimationFrame(() => { marksQueued = false; drawMarks(); });
   }
 
+  const GLIDE = 320; // ms
+  let anims = [], prevClusters = new Map(), animFrame = 0;
+  function animate(now) {
+    cancelAnimationFrame(animFrame);
+    let busy = false;
+    anims.forEach((a) => {
+      const u = Math.min(1, (now - a.t0) / GLIDE), e = 1 - Math.pow(1 - u, 3);
+      if (u < 1) busy = true;
+      a.vx = a.sx + (a.dx - a.sx) * e; a.vy = a.sy + (a.dy - a.sy) * e;
+      a.body.setAttribute("transform", "translate(" + (a.vx - a.dx) + " " + (a.vy - a.dy) + ")");
+      const reach = Math.hypot(a.vx / (a.w / 2), a.vy / (a.h * 0.45)); // ellipse hugging the drawing
+      const show = reach > 1.15;
+      a.leader.style.display = a.spot.style.display = show ? "" : "none";
+      if (show) {
+        const cx = a.x0 + a.vx, cy = a.y0 + a.vy;
+        a.leader.setAttribute("d", "M" + a.x0 + " " + a.y0 + "L" + (cx - a.vx / reach) + " " + (cy - a.vy / reach));
+      }
+      if (a.ghost) {
+        const f = Math.min(1, (now - a.f0) / GLIDE);
+        a.grp.style.opacity = 1 - f;
+        if (f >= 1) a.grp.remove(); else busy = true;
+      }
+    });
+    if (busy) animFrame = requestAnimationFrame(animate);
+  }
+
   function drawMarks() {
     const g = layers.marks;
     g.innerHTML = "";
@@ -288,11 +314,13 @@
     const placeIcon = (q, x, y, fanned) => {
       const w = size * q.p.categories.length;
       let box = { x: x - w / 2, y: y - size / 2, w, h: size };
-      if (!fanned && hits(box)) {
-        for (let ring = 1; ring <= 3 && hits(box); ring++) {
-          for (let i = 0; i < 8; i++) {
-            const a = (i / 8) * Math.PI * 2 + ring * 0.4;
-            const nx = q.x0 + Math.cos(a) * size * 0.9 * ring, ny = q.y0 + Math.sin(a) * size * 0.9 * ring;
+      if (hits(box)) {
+        // look for the nearest free spot around where the icon wanted to go, so icons never overlap
+        const cx = fanned ? x : q.x0, cy = fanned ? y : q.y0;
+        for (let ring = 1; ring <= 8 && hits(box); ring++) {
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2 + ring * 0.4 + Math.atan2(cy - q.y0, cx - q.x0);
+            const nx = cx + Math.cos(a) * size * 0.6 * ring, ny = cy + Math.sin(a) * size * 0.6 * ring;
             const nb = { x: nx - w / 2, y: ny - size / 2, w, h: size };
             if (!hits(nb)) { x = nx; y = ny; box = nb; break; }
           }
@@ -302,6 +330,7 @@
       placed.push({ p: q.p, x, y, x0: q.x0, y0: q.y0, w, box });
     };
     const pts = [];
+    const clusterPos = new Map();
     if (k >= ADMIN_ZOOM) visible.forEach((p) => {
       const [x0, y0] = transform.apply(projection(lnglat(p)));
       if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
@@ -343,7 +372,7 @@
         // once a group has fanned out it stays fanned: if it would run into something already
         // drawn, it opens a little wider instead of folding back into a circle
         let grow = 1;
-        while (grow < 1.8 && slots.some((s) => hits(s.box))) {
+        while (grow < 2.2 && slots.some((s) => hits(s.box))) {
           grow += 0.2;
           slots.forEach((s, i) => {
             const a = -Math.PI + best + i * step, w = s.box.w;
@@ -355,6 +384,7 @@
         return;
       }
       const r = 10 + Math.min(9, Math.sqrt(n) * 2);
+      G.members.forEach((q) => clusterPos.set(q.p.id, [G.x, G.y, G.x - q.x0, G.y - q.y0]));
       const ids = G.members.map((q) => q.p.id).join(" ");
       const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-ids": ids, "aria-label": n + " places close together, zoom in" }, g);
       el("circle", { cx: G.x, cy: G.y, r }, grp);
@@ -364,33 +394,70 @@
       boxes.push({ x: G.x - r - 3, y: G.y - r - 3, w: 2 * r + 6, h: 2 * r + 6 });
     });
 
+    // 2. draw the icons. Each one glides from where it was last shown to its new spot, and icons
+    //    that join a numbered circle glide into it and fade, so nothing jumps while zooming.
+    const prev = anims;
+    const prevById = new Map(prev.filter((a) => !a.ghost).map((a) => [a.p.id, a]));
+    const prevGhosts = new Map(prev.filter((a) => a.ghost).map((a) => [a.p.id, a]));
+    anims = [];
+    const now = performance.now();
+    const startFrom = (id, x0, y0, tdx, tdy) => {
+      const o = prevById.get(id) || prevGhosts.get(id);
+      // offsets are measured from the place's real spot, so panning and zooming carry them along
+      if (o) return { sx: o.vx, sy: o.vy, same: !o.ghost && Math.abs(o.dx - tdx) < 0.5 && Math.abs(o.dy - tdy) < 0.5, o };
+      const c = prevClusters.get(id); // coming out of a numbered circle
+      if (c) return { sx: c[2], sy: c[3] };
+      return { sx: tdx, sy: tdy };
+    };
+    const drawBody = (it, grp) => {
+      const p = it.p;
+      const body = el("g", {}, grp);
+      el("ellipse", { class: "halo", cx: it.x, cy: it.y, rx: it.w / 2 + 5, ry: size / 2 + 5 }, body);
+      p.categories.forEach((c, i) => {
+        const ig = el("g", { class: "icon", transform: "translate(" + (it.box.x + i * size) + " " + it.box.y + ") scale(" + size / 24 + ")" }, body);
+        ig.innerHTML = ICONS[c] || ICONS["friendly-house"];
+      });
+      return body;
+    };
     placed.forEach((it) => {
       const p = it.p;
       const grp = el("g", {
         class: "place" + (state.selectedId === p.id ? " selected" : ""),
         tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
       }, g);
-      // moved aside to make room: a dot on the real spot and a pen line that stops at the icon's edge
-      const dx = it.x - it.x0, dy = it.y - it.y0;
-      const reachEdge = Math.hypot(dx / (it.w / 2), dy / (size * 0.45)); // ellipse hugging the drawing
-      if (reachEdge > 1.15) {
-        const ex = it.x - dx / reachEdge, ey = it.y - dy / reachEdge;
-        el("path", { class: "leader", d: "M" + it.x0 + " " + it.y0 + "L" + ex + " " + ey }, grp);
-        el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
-      }
-      el("ellipse", { class: "halo", cx: it.x, cy: it.y, rx: it.w / 2 + 5, ry: size / 2 + 5 }, grp);
-      p.categories.forEach((c, i) => {
-        const ig = el("g", { class: "icon", transform: "translate(" + (it.box.x + i * size) + " " + it.box.y + ") scale(" + size / 24 + ")" }, grp);
-        ig.innerHTML = ICONS[c] || ICONS["friendly-house"];
-      });
+      // a dot on the real spot and a pen line that stops at the icon's edge (shown when moved aside)
+      const leader = el("path", { class: "leader" }, grp);
+      const spot = el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
+      const body = drawBody(it, grp);
       // name tag, shown on hover, keyboard focus or selection (CSS); flips left near the right edge
       const tw = textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
       const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
-      const tag = el("g", { class: "name-tag" }, grp);
+      const tag = el("g", { class: "name-tag" }, body);
       el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
       el("text", { x: tx + 6, y: it.y + 4 }, tag).textContent = p.name;
+      const dx = it.x - it.x0, dy = it.y - it.y0;
+      const st = startFrom(p.id, it.x0, it.y0, dx, dy);
+      anims.push({ p, grp, body, leader, spot, x0: it.x0, y0: it.y0, w: it.w, h: size, dx, dy,
+        sx: st.same ? st.o.sx : st.sx, sy: st.same ? st.o.sy : st.sy, t0: st.same ? st.o.t0 : now, vx: st.sx, vy: st.sy });
     });
+    // icons that were shown a moment ago but have now joined a circle: glide in and fade out
+    clusterPos.forEach(([cx, cy], id) => {
+      const o = prevById.get(id) || prevGhosts.get(id);
+      const q = pts.find((q) => q.p.id === id);
+      if (!o || !q || (o.ghost && now - o.f0 > GLIDE)) return;
+      const it = { p: o.p, x: cx, y: cy, x0: q.x0, y0: q.y0, w: o.w, box: { x: cx - o.w / 2, y: cy - size / 2, w: o.w, h: size } };
+      const grp = el("g", { class: "place ghost", "aria-hidden": "true" }, g);
+      g.insertBefore(grp, g.firstChild);
+      const leader = el("path", { class: "leader" }, grp);
+      const spot = el("circle", { class: "spot", cx: q.x0, cy: q.y0, r: 2.4 }, grp);
+      const body = drawBody(it, grp);
+      const sx = o.vx, sy = o.vy;
+      anims.push({ p: o.p, grp, body, leader, spot, ghost: true, f0: o.ghost ? o.f0 : now, x0: q.x0, y0: q.y0,
+        w: o.w, h: size, dx: cx - q.x0, dy: cy - q.y0, sx, sy, t0: now, vx: sx, vy: sy });
+    });
+    prevClusters = clusterPos;
+    animate(now);
 
     if (moving) return; // labels and towns wait until the map stops moving
 
