@@ -238,9 +238,9 @@ body::after {
   line-height: 1.1;
   letter-spacing: .12em;
   text-transform: uppercase;
-  border-bottom: 4px double var(--ink);
   text-wrap: balance;
 }
+.map-heading .title-name { display: inline-block; padding-bottom: 4px; border-bottom: 4px double var(--ink); }
 
 /* ---------- post-it note, stuck on the top right of the map ---------- */
 .note {

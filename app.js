@@ -705,7 +705,7 @@
     if (r) title = r.properties.name;
     // the name of the area, with how many places it has in a pen-drawn circle
     const n = placesInFocus().length;
-    mapTitleEl.innerHTML = esc(title) + (n ? ' <span class="title-count" title="' + n + " place" + (n === 1 ? "" : "s") + ' on the map">' + n + "</span>" : "");
+    mapTitleEl.innerHTML = '<span class="title-name">' + esc(title) + "</span>" + (n ? ' <span class="title-count" title="' + n + " place" + (n === 1 ? "" : "s") + ' on the map">' + n + "</span>" : "");
     crumbsEl.innerHTML = "";
     if (c) crumbs.forEach((cr) => {
       const li = document.createElement("li");
