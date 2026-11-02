@@ -98,7 +98,7 @@ def main():
         a3 = p["ADM0_A3"]
         if a3 == "ATA":  # Antarctica is left off the map
             continue
-        feats.append({"type": "Feature", "id": a3, "properties": {"a3": a3, "name": p["NAME"], "name_local": p.get("NAME_" + (p.get("ISO_A2") or "").upper(), None) or p["NAME"]}, "geometry": geom(g, 3)})
+        feats.append({"type": "Feature", "id": a3, "properties": {"a3": a3, "name": p["NAME"], "name_es": p.get("NAME_ES") or p["NAME"], "name_local": p.get("NAME_" + (p.get("ISO_A2") or "").upper(), None) or p["NAME"]}, "geometry": geom(g, 3)})
     print("countries", write("data/world/countries.json", {"type": "FeatureCollection", "features": feats}) // 1024, "KB")
 
     lakes = [{"type": "Feature", "properties": {"name": f["properties"].get("name")}, "geometry": geom(clockwise(shape(f["geometry"]).simplify(0.01).buffer(0)), 3)}

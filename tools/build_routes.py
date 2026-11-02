@@ -18,13 +18,15 @@ from shapely.geometry import LineString
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "connections.json")
 SERVER = "https://routing.openstreetmap.de/{profile}/route/v1/driving/{a};{b}?overview=full&geometries=geojson"
+MAX_EDGE_KM = 80  # never join places further apart than this
 MODES = {
-    # mode: (server profile, longest straight-line distance in km worth routing)
-    "car": ("routed-car", 80),
-    "bike": ("routed-bike", 60),
-    "foot": ("routed-foot", 25),
+    # mode: (server profile, longest straight-line distance in km worth routing). The map's
+    # settings decide which of these are shown (by default: car always, bike up to 60 km,
+    # walking up to 30 km of route), so routes are fetched a bit beyond those defaults.
+    "car": ("routed-car", MAX_EDGE_KM),
+    "bike": ("routed-bike", 80),
+    "foot": ("routed-foot", 50),
 }
-MAX_EDGE_KM = 80        # never join places further apart than this
 SIMPLIFY_DEG = 0.0015   # about 150 m: keeps the shape of the way, drops the wiggles
 AGENT = "roots-map/0.1 (https://github.com/irenencina/roots)"
 
