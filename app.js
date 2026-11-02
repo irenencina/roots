@@ -570,9 +570,33 @@
     const knob = el("g", { class: "reach-knob" }, g);
     el("circle", { cx: kx, cy: ky, r: 7 }, knob);
     el("path", { d: "M" + (kx - 3) + " " + (ky - 3) + "l6 6m-6 -2.5v2.5h2.5m3.5 -6h-2.5m2.5 0v2.5" }, knob);
-    // the value sits on the circle, top right, written like a name tag; tap it to switch time / distance
-    const a = -Math.PI / 4, lx = cx + Math.cos(a) * rad, ly = cy + Math.sin(a) * rad;
+    // the value sits on the circle, top left, written like a name tag; tap it to switch time / distance.
+    // When the circle grows past the edge of the map or under the note, the tag slides along the
+    // circle to the nearest spot that is still in view.
     const label = fmtReach(r), tw = textWidth(label, "700 12px Kalam, cursive") + 46;
+    const tagAt = (ang) => {
+      const px = cx + Math.cos(ang) * rad, py = cy + Math.sin(ang) * rad;
+      return { lx: px - tw + 4, ly: py }; // the tag's right end touches the circle
+    };
+    // the note's real size (it grows with the place's details), in map coordinates
+    const M = svg.getScreenCTM(), nr = document.getElementById("note").getBoundingClientRect();
+    const noteBox = M && nr.width ? { x: (nr.left - M.e) / M.a - 6, y: (nr.top - M.f) / M.d - 6, w: nr.width / M.a + 12, h: nr.height / M.d + 12 } : null;
+    const free = ({ lx, ly }) => {
+      const b = { x: lx - 4, y: ly - 10, w: tw, h: 20 };
+      if (noteBox && b.x < noteBox.x + noteBox.w && b.x + b.w > noteBox.x && b.y < noteBox.y + noteBox.h && b.y + b.h > noteBox.y) return false;
+      return b.x > 6 && b.y > 6 && b.x + b.w < W - 6 && b.y + b.h < H - 6 &&
+        !boxes.some((o) => b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y);
+    };
+    let spot = null;
+    for (let s = 0; s <= 36 && !spot; s++) {
+      for (const sign of s ? [1, -1] : [1]) {
+        const q = tagAt(-0.75 * Math.PI + sign * s * Math.PI / 36);
+        if (free(q)) { spot = q; break; }
+      }
+    }
+    // nowhere on the circle is in view (zoomed right in): keep it inside the map, near the top left
+    if (!spot) { const q = tagAt(-0.75 * Math.PI); spot = { lx: Math.min(Math.max(q.lx, 10), W - tw - 6), ly: Math.min(Math.max(q.ly, 110), H - 70) }; }
+    const { lx, ly } = spot;
     boxes.push({ x: lx - 4, y: ly - 10, width: tw, w: tw, h: 20 });
     const tag = el("g", { class: "reach-tag " + state.mode, tabindex: "0", role: "button", "aria-label": label + ". " + t("reachHelp") }, g);
     el("rect", { x: lx - 4, y: ly - 10, width: tw, height: 20, rx: 3 }, tag);
@@ -925,6 +949,7 @@
     });
 
     const reachNow = currentReach(), reachSet = reachSetting();
+    const tripTo = reachSet && reachFrom(state.selectedId, state.mode, "time", Infinity);
     // 2. draw the icons. Each one glides from where it was last shown to its new spot, and icons
     //    that join a numbered circle glide into it and fade, so nothing jumps while zooming.
     const prev = anims;
@@ -961,7 +986,11 @@
       const spot = el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
       const body = drawBody(it, grp);
       // name tag, shown on hover, keyboard focus or selection (CSS); flips left near the right edge
-      const tw = textWidth(p.name, "700 12px Kalam, cursive") + 12;
+      // with a place selected, every other place's tag also says how long the whole trip there takes
+      const trip = tripTo && state.selectedId !== p.id && tripTo.get(p.id);
+      const tripText = trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "";
+      const nameW = textWidth(p.name, (state.selectedId === p.id ? "700" : "400") + " 12px Kalam, cursive") + 12;
+      const tw = trip ? nameW + 22 + textWidth(tripText, "400 12px Kalam, cursive") + 6 : textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
       const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
       if (state.selectedId === p.id) boxes.push({ x: tx, y: it.y - 10, w: tw, h: 20 }); // its name is always shown
@@ -969,7 +998,12 @@
       const tagRect = el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
       const tagText = el("text", { x: tx + 6, y: it.y + 4 }, tag);
       tagText.textContent = p.name;
-      grp._tag = { tag, rect: tagRect, text: tagText, tx, y: it.y, tw, right };
+      if (trip) {
+        grp.classList.add("has-way", state.mode);
+        el("path", { class: "sample", d: "M" + (tx + nameW) + " " + (it.y + 1) + "q4 -3 8 0t8 -.5" }, tag);
+        el("text", { class: "time", x: tx + nameW + 22, y: it.y + 4 }, tag).textContent = tripText;
+      }
+      grp._tag = { tag, rect: tagRect, text: tagText, tx, y: it.y, tw, right, trip };
       const dx = it.x - it.x0, dy = it.y - it.y0;
       const st = startFrom(p.id, it.x0, it.y0, dx, dy);
       anims.push({ p, grp, body, leader, spot, x0: it.x0, y0: it.y0, w: it.w, h: size, dx, dy,
@@ -999,30 +1033,24 @@
     if (moving) return; // labels and towns wait until the map stops moving
 
     // the time added to another place's name tag, with a short stroke of the way's line
-    function tagTime(other, label) {
+    function tagTime(other) {
       const og = [...g.querySelectorAll(".place")].find((n) => n.dataset.id === other.id);
       const T = og && og._tag;
-      if (!T) return;
-      const nameW = textWidth(other.name, "400 12px Kalam, cursive") + 12;
-      const w = nameW + 26 + textWidth(label, "400 12px Kalam, cursive") + 6;
-      const x0 = T.right ? T.tx : T.tx + T.tw - w;
-      const box = { x: x0, y: T.y - 10, w, h: 20 };
+      if (!T || !T.trip) return;
+      const box = { x: T.tx, y: T.y - 10, w: T.tw, h: 20 };
       if (hits(box)) return; // no room: the note still lists it
       boxes.push(box);
-      T.rect.setAttribute("x", x0);
-      T.rect.setAttribute("width", w);
-      T.text.setAttribute("x", x0 + 6);
-      el("path", { class: "sample", d: "M" + (x0 + nameW) + " " + (T.y + 1) + "q4 -3 8 0t8 -.5" }, T.tag);
-      el("text", { class: "time", x: x0 + nameW + 22, y: T.y + 4 }, T.tag).textContent = label;
-      og.classList.add("linked", state.mode);
+      og.classList.add("linked");
     }
-    // 2b. along each way used to reach places in the circle: that stretch's time (or distance)
+    // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
     if (reachNow && k >= ADMIN_ZOOM) {
       [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
         other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
       })).forEach((c) => {
         const pts = routeCoords(c.e, c.r).map((q) => transform.apply(projection(q)));
-        const label = reachSet.kind === "time" ? fmtTime(c.r.min) : c.r.km + " " + t("km");
+        // the total from the selected place to the far end of this stretch, the same number the
+        // circle compares with, so a place lights up exactly when the circle reaches its label
+        const label = reachSet.kind === "time" ? fmtTime(c.info.min) : c.info.km + " " + t("km");
         const tw = textWidth(label, "400 12px Kalam, cursive") + 30; // room for a little sample of the line
         // half way along the way, or the nearest free spot along it
         let at = null, bx = null;
@@ -1046,7 +1074,7 @@
           }
         }
         // too short to write on at this zoom: the total goes on the place's own name tag
-        if (!bx) return tagTime(c.other, reachSet.kind === "time" ? fmtTime(c.info.min) : c.info.km + " " + t("km"));
+        if (!bx) return tagTime(c.other);
         boxes.push(bx);
         // drawn like a place's name tag, with a short stroke of the way's own line in front
         const tg = el("g", { class: "route-time " + state.mode }, g);

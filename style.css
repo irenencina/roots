@@ -344,10 +344,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .cluster:focus-visible circle { stroke-width: 2.4; }
 .place .name-tag { display: none; pointer-events: none; }
 .place:hover .name-tag, .place:focus-visible .name-tag, .place.selected .name-tag, .place.linked .name-tag { display: inline; }
-.place.linked .name-tag .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
-.place.linked.car .name-tag .sample { stroke: var(--way-car); }
-.place.linked.bike .name-tag .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
-.place.linked.foot .name-tag .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
+.place.has-way .name-tag .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
+.place.has-way.car .name-tag .sample { stroke: var(--way-car); }
+.place.has-way.bike .name-tag .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
+.place.has-way.foot .name-tag .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
 .name-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .name-tag text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
 .place.selected .name-tag text { font-weight: 700; }
