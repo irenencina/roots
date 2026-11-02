@@ -23,7 +23,7 @@ from build_routes import km, route, AGENT, SIMPLIFY_DEG
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "stations.json")
-OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 MARGIN_DEG = 0.3      # look this far around the places (about 30 km)
 NEAREST = 3           # stations routed per place
 MODES = {"car": ("routed-car", 60), "bike": ("routed-bike", 40), "foot": ("routed-foot", 15)}  # longest straight km worth routing
@@ -36,15 +36,18 @@ MAX_TRIP_MIN = 240
 
 
 def overpass(query):
+    """Ask the Overpass API, trying each mirror, and again after a pause when all are busy."""
     data = urllib.parse.urlencode({"data": query}).encode()
     last = None
-    for url in OVERPASS:
-        try:
-            req = urllib.request.Request(url, data=data, headers={"User-Agent": AGENT})
-            return json.load(urllib.request.urlopen(req, timeout=180))
-        except Exception as ex:  # try the next mirror
-            print("  overpass failed at", url, ex)
-            last = ex
+    for attempt in range(4):
+        for url in OVERPASS:
+            try:
+                req = urllib.request.Request(url, data=data, headers={"User-Agent": AGENT})
+                return json.load(urllib.request.urlopen(req, timeout=300))
+            except Exception as ex:  # busy or down: try the next mirror
+                print("  overpass failed at", url, ex)
+                last = ex
+        time.sleep(30 * (attempt + 1))
     raise last
 
 
