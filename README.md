@@ -22,6 +22,12 @@ Open a region or country directly with its id in the address, e.g. `#ITA-piemont
 
 Add them to `data/places.json` with a `location` (`lat`, `lng`). Nothing else is needed: the place finds its own country and region, and that region turns brown.
 
+## Connections between places
+
+`data/connections.json` holds the ways between places. Places are joined as a graph: two places get a connection when no other place sits between them (up to 80 km apart). Each connection is routed over OpenStreetMap by car, by bike (up to 60 km) and on foot (up to 25 km), then simplified so it reads as a drawn line that still follows the real way. The swatch at the bottom left of the map picks which one is drawn; tap a place to see its travel times.
+
+The GitHub Action `Build connections` runs `tools/build_routes.py` whenever `data/places.json` changes and commits the result, so new places get their connections automatically. Only new connections are routed, through the free FOSSGIS servers at routing.openstreetmap.de. Ways: © OpenStreetMap contributors (ODbL).
+
 ## Rebuild the world map
 
 ```

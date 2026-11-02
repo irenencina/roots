@@ -7,6 +7,8 @@
   --page-shade: #dcc995;    /* darker paper toward the edges */
   --land: #ecdcbf;          /* map beige from the paper map (icon fill) */
   --land-none: #d9d5c9;     /* regions with no places yet: grey */
+  --land-other: #c9c4b6;    /* countries with no places yet: a darker grey */
+  --river: #7aa9c7;         /* rivers: a light water blue, well apart from the dark car blue */
   --land-data: #e9d8b8;     /* regions with places: brown */
   --land-focus: #ddb995;    /* the region in focus: red-brown */
   --water: #b7c6c6;         /* map grey-blue from the paper map */
@@ -63,6 +65,7 @@ body::after {
 }
 
 .head {
+  position: relative;
   grid-area: head;
   display: flex;
   flex-direction: column;
@@ -316,17 +319,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .area { stroke: none; cursor: pointer; fill: var(--land-none); }
 .area.has-data { fill: var(--land-data); }
 .area.focus { fill: var(--land-focus); }
-.area.hidden-by-regions { display: none; }
-.country-line { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
-.country-line.b { stroke-width: .6; opacity: .7; }
-.region-line { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: 5 3.5; stroke-linecap: round; opacity: .9; }
+.area.country:not(.has-data) { fill: var(--land-other); }
+/* a country's border is a firm pen line; a region's border inside it is a light dashed one */
+.country-line { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; stroke-linecap: round; }
+.region-line { fill: none; stroke: var(--ink-soft); stroke-width: .7; stroke-dasharray: 3 4; stroke-linecap: round; opacity: .75; }
 .focus-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.focus-line.b { stroke-width: .9; opacity: .8; }
 .lake-line { fill: none; stroke: var(--ink); stroke-width: .9; }
 .leader { stroke: var(--ink); stroke-width: .9; fill: none; }
 .area-label { font-family: var(--pen); font-weight: 300; letter-spacing: .12em; fill: var(--ink-soft); pointer-events: none; }
 .area-label.country { font-weight: 400; fill: var(--ink); }
-.river { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
+.river { fill: none; stroke: var(--river); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
 .water { fill: var(--water); stroke: none; }
 .water-hatch { fill: url(#hatch); stroke: none; pointer-events: none; }
 .city circle { fill: var(--page); stroke: var(--ink); stroke-width: 1.2; }
@@ -342,7 +344,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .cluster:focus { outline: none; }
 .cluster:focus-visible circle { stroke-width: 2.4; }
 .place .name-tag { display: none; pointer-events: none; }
-.place:hover .name-tag, .place:focus-visible .name-tag, .place.selected .name-tag { display: inline; }
+.place:hover .name-tag, .place:focus-visible .name-tag, .place.selected .name-tag, .place.linked .name-tag { display: inline; }
+.place.has-way .name-tag .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
+.place.has-way.car .name-tag .sample { stroke: var(--way-car); }
+.place.has-way.bike .name-tag .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
+.place.has-way.foot .name-tag .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
 .name-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .name-tag text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
 .place.selected .name-tag text { font-weight: 700; }
@@ -381,3 +387,179 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .place.ghost { pointer-events: none; }
 .credits { margin: auto 0 0; padding-top: 16px; font-size: 12px; color: var(--ink-soft); }
 .credits a { color: inherit; }
+
+/* ---------- connections between places ---------- */
+:root { --way-car: #2f5277; --way-bike: #3d6b34; --way-foot: #9b3b22; }
+.routes .route-line { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.routes.car .route-line { stroke: var(--way-car); stroke-width: 1.8; }
+.routes.bike .route-line { stroke: var(--way-bike); stroke-dasharray: 7 4; }
+.routes.foot .route-line { stroke: var(--way-foot); stroke-dasharray: .5 4.5; stroke-width: 2.4; }
+.routes .route-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
+.routes.has-selection .route { opacity: .3; }
+.routes.has-selection .route.lit { opacity: 1; }
+.routes .route.lit .route-line { stroke-width: 2.6; }
+.routes.foot .route.lit .route-line { stroke-width: 3.2; }
+.routes .route:hover .route-line { stroke-width: 2.8; }
+#map.moving .routes .route-hit { pointer-events: none; }
+.route-time rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
+.route-time .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
+.route-time.car .sample { stroke: var(--way-car); }
+.route-time.bike .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
+.route-time.foot .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
+.route-time text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
+
+/* the swatch: which way of travelling to draw */
+.modes {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: calc(100% - 80px);
+  padding: 6px 8px;
+  background: var(--page);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px 14px 9px 13px / 13px 9px 14px 10px;
+  box-shadow: 2px 3px 0 rgba(27, 26, 23, .15);
+}
+.modes-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.modes-title { padding-left: 4px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.modes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 5px;
+  border: 1.2px dashed transparent;
+  border-radius: 12px 9px 13px 10px / 10px 13px 9px 12px;
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--pen);
+  font-size: 14px;
+  cursor: pointer;
+}
+.modes button:hover { color: var(--ink); border-color: var(--ink-soft); }
+.modes button[aria-pressed="true"] { color: var(--ink); font-weight: 700; border: 1.5px solid var(--ink); background: var(--land); }
+.modes .mode-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.modes .swatch { width: 30px; height: 8px; fill: none; stroke-width: 2; stroke-linecap: round; }
+.modes .swatch.car { stroke: var(--way-car); }
+.modes .swatch.bike { stroke: var(--way-bike); stroke-dasharray: 5 3; }
+.modes .swatch.foot { stroke: var(--way-foot); stroke-dasharray: .5 3.5; stroke-width: 2.6; }
+.note .ways-title { margin: 10px 0 2px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.note ul.ways { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.note ul.ways li { display: flex; justify-content: space-between; gap: 8px; }
+.note ul.ways button { padding: 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.note ul.ways button:hover { font-weight: 700; }
+.note ul.ways span { flex: none; color: var(--ink-soft); }
+.note p.ways { font-size: 14px; color: var(--ink-soft); }
+
+/* ---------- settings: a gear by the wordmark, opening a paper card ---------- */
+.settings-btn {
+  position: absolute;
+  top: 16px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  padding: 6px;
+  border: 1.5px solid transparent;
+  border-radius: 46% 54% 50% 50% / 52% 46% 54% 48%;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.settings-btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.settings-btn:hover, .settings-btn[aria-expanded="true"] { border-color: var(--ink); background: var(--land); }
+.settings {
+  position: absolute;
+  z-index: 20;
+  top: 60px;
+  right: 8px;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px 14px 14px;
+  background: var(--page);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px 14px 9px 13px / 13px 9px 14px 10px;
+  box-shadow: 3px 4px 0 rgba(27, 26, 23, .18);
+}
+.settings[hidden] { display: none; }
+.settings-title { display: inline-block; margin: 0 0 8px; font-size: 17px; letter-spacing: .12em; text-transform: uppercase; border-bottom: 3px double var(--ink); }
+.settings fieldset { margin: 0 0 10px; padding: 0; border: 0; }
+.settings legend { margin-bottom: 4px; padding: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.settings-lang { display: flex; gap: 6px; }
+.settings-lang button, .settings-done {
+  padding: 3px 12px;
+  border: 1.2px dashed var(--ink-soft);
+  border-radius: 12px 9px 13px 10px / 10px 13px 9px 12px;
+  background: none;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-size: 15px;
+  cursor: pointer;
+}
+.settings-lang button[aria-pressed="true"] { font-weight: 700; border: 1.5px solid var(--ink); background: var(--land); }
+.settings-done { float: right; border-style: solid; border-color: var(--ink); }
+.limit-row { display: grid; grid-template-columns: 20px 52px 1fr 64px; align-items: center; gap: 6px; margin: 4px 0; font-size: 15px; }
+.limit-row .mode-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.limit-row output { text-align: right; font-weight: 700; font-size: 14px; }
+.limit-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--ink); }
+
+/* the reach circle: dashed, around the selected place; drag its edge, tap its label */
+.reach .reach-fill { fill: var(--page); opacity: .12; pointer-events: none; }
+.reach .reach-line { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 6 5; pointer-events: none; }
+.reach.car .reach-line { stroke: var(--way-car); }
+.reach.bike .reach-line { stroke: var(--way-bike); }
+.reach.foot .reach-line { stroke: var(--way-foot); }
+.reach .reach-edge { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: grab; touch-action: none; }
+.reach .reach-edge:hover, .reach .reach-edge:focus-visible { stroke: rgba(27, 26, 23, .12); }
+#map.dragging-reach, #map.dragging-reach .reach-edge { cursor: grabbing; }
+.reach-knob { cursor: nwse-resize; touch-action: none; }
+.reach-knob circle { fill: var(--page); stroke: var(--ink); stroke-width: 1.3; }
+.reach-knob path { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.reach-knob:hover circle { fill: var(--land); }
+.reach-tag { cursor: pointer; }
+.reach-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: 1.2; }
+.reach-tag:hover rect, .reach-tag:focus-visible rect { fill: var(--land); }
+.reach-tag text { font-family: var(--pen); font-weight: 700; font-size: 12px; fill: var(--ink); }
+.reach-tag .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
+.reach-tag .swap { fill: none; stroke: var(--ink-soft); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.reach-tag.car .sample { stroke: var(--way-car); }
+.reach-tag.bike .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
+.reach-tag.foot .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
+.note .ways-title .mode-icon { width: 18px; height: 18px; vertical-align: -4px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.note ul.ways .who { display: flex; flex-direction: column; min-width: 0; }
+.note ul.ways small { color: var(--ink-soft); font-size: 12px; line-height: 1.1; margin-bottom: 2px; }
+.note ul.ways li { align-items: baseline; }
+.note p.reach-help { margin: 6px 0 0; font-size: 12px; color: var(--ink-soft); }
+.place.far { opacity: .3; }
+
+/* no browser focus box when clicking map things; keyboard focus gets a soft pen highlight instead */
+#map [tabindex]:focus { outline: none; }
+#map .reach-tag:focus-visible rect, #map .cluster:focus-visible circle { stroke-width: 2.2; }
+#map .reach-knob:focus-visible circle { stroke-width: 2.2; }
+
+/* a way's hover tag, like a place's name tag */
+.route-tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 260px;
+  padding: 3px 8px 4px;
+  background: var(--page);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font-family: var(--pen);
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.route-tip[hidden] { display: none; }
+.route-tip b { font-weight: 700; }
+.route-tip .tip-names { white-space: nowrap; }
+.route-tip .tip-row { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.route-tip .swatch { width: 24px; height: 8px; fill: none; stroke-width: 2; stroke-linecap: round; }
+.route-tip .swatch.car { stroke: var(--way-car); }
+.route-tip .swatch.bike { stroke: var(--way-bike); stroke-dasharray: 5 3; }
+.route-tip .swatch.foot { stroke: var(--way-foot); stroke-dasharray: .5 3.5; stroke-width: 2.6; }

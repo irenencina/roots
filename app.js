@@ -35,9 +35,78 @@
   const RIVER_ZOOM = 12;  // rivers appear when you are close
   const SPREAD_MAX = 6;   // bigger groups always stay a numbered circle
 
+  // ---------- words, in English and Spanish ----------
+  const TEXT = {
+    en: {
+      tagline: "Conscious spaces around us",
+      credits: 'Map: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Towns: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0). Ways: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.',
+      mapLabel: "Hand-drawn world map of conscious places", byType: "Places by type", whereYouAre: "Where you are",
+      zoomIn: "Zoom in", zoomOut: "Zoom out", zoomReset: "Zoom out to the whole world",
+      world: "World", theWorld: "The world", theWorldIn: "the world", loading: "Loading the map…",
+      placesOnMap: (n) => n + (n === 1 ? " place" : " places") + " on the map",
+      noPlacesIn: (w) => "No places in " + w + " yet",
+      tapPlace: "Tap a place",
+      welcome: (n, w) => n + " places in " + w + ". Tap a type in the list to hide or show it, or a neighbouring region to move there.",
+      emptyHere: "No places here yet. Brown regions have places; grey ones are still empty.",
+      zoomOrTap: "Zoom in or tap a country", worldHint: "Brown areas have places, grey ones are still empty.",
+      close: "Close", noDescription: "No description yet.", where: "where", website: "website", contact: "contact", notYet: "not added yet",
+      clusterCountry: (n) => n + " places, zoom in", clusterNear: (n) => n + " places close together, zoom in",
+      ways: "Transport", car: "Car", bike: "Bike", foot: "Walk",
+      byCar: "by car", byBike: "by bike", onFoot: "on foot",
+      nearby: (verb) => "Nearby, " + verb, noneNearby: (verb) => "No nearby places to reach " + verb + ".",
+      settings: "Settings", language: "Language", showWays: "Show ways up to",
+      noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
+      nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
+      reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
+    },
+    es: {
+      tagline: "Espacios conscientes a nuestro alrededor",
+      credits: 'Mapa: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Pueblos: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0). Caminos: colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>.',
+      mapLabel: "Mapa del mundo dibujado a mano con lugares conscientes", byType: "Lugares por tipo", whereYouAre: "Dónde estás",
+      zoomIn: "Acercar", zoomOut: "Alejar", zoomReset: "Ver el mundo entero",
+      world: "Mundo", theWorld: "El mundo", theWorldIn: "el mundo", loading: "Cargando el mapa…",
+      placesOnMap: (n) => n + (n === 1 ? " lugar" : " lugares") + " en el mapa",
+      noPlacesIn: (w) => "Todavía no hay lugares en " + w,
+      tapPlace: "Toca un lugar",
+      welcome: (n, w) => n + " lugares en " + w + ". Toca un tipo en la lista para ocultarlo o mostrarlo, o una región vecina para ir allí.",
+      emptyHere: "Todavía no hay lugares aquí. Las regiones marrones tienen lugares; las grises aún están vacías.",
+      zoomOrTap: "Acércate o toca un país", worldHint: "Las zonas marrones tienen lugares, las grises aún están vacías.",
+      close: "Cerrar", noDescription: "Aún sin descripción.", where: "dónde", website: "web", contact: "contacto", notYet: "aún no añadido",
+      clusterCountry: (n) => n + " lugares, acercar", clusterNear: (n) => n + " lugares muy juntos, acercar",
+      ways: "Transporte", car: "Coche", bike: "Bici", foot: "A pie",
+      byCar: "en coche", byBike: "en bici", onFoot: "a pie",
+      nearby: (verb) => "Cerca, " + verb, noneNearby: (verb) => "No hay lugares cercanos " + verb + ".",
+      settings: "Ajustes", language: "Idioma", showWays: "Mostrar caminos hasta",
+      noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
+      nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
+      reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
+    },
+  };
+  const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
+  const settings = (() => {
+    const s = { lang: (navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en", limit: { car: Infinity, bike: 60, foot: 30 } };
+    try {
+      const saved = JSON.parse(localStorage.getItem("roots-settings") || "{}");
+      if (saved.lang === "en" || saved.lang === "es") s.lang = saved.lang;
+      Object.keys(s.limit).forEach((m) => { const v = saved.limit && saved.limit[m]; if (typeof v === "number" || v === null) s.limit[m] = v === null ? Infinity : v; });
+    } catch (err) { /* no storage: use the defaults */ }
+    return s;
+  })();
+  function saveSettings() {
+    try {
+      const limit = {};
+      Object.keys(settings.limit).forEach((m) => { limit[m] = settings.limit[m] === Infinity ? null : settings.limit[m]; });
+      localStorage.setItem("roots-settings", JSON.stringify({ lang: settings.lang, limit }));
+    } catch (err) { /* private window */ }
+  }
+  const t = (key, ...args) => { const v = TEXT[settings.lang][key]; return typeof v === "function" ? v(...args) : v; };
+  const catLabel = (c) => (c ? c["label_" + settings.lang] || c.label_en : "");
+  const countryName = (f) => (settings.lang === "es" && f.properties.name_es) || f.properties.name;
+
   const $ = (id) => document.getElementById(id);
   const svg = $("map");
   const noteEl = $("note");
+  const modesEl = $("modes");
   const legendEl = $("legend");
   const listTitleEl = $("list-title");
   const crumbsEl = $("crumbs");
@@ -56,6 +125,13 @@
     focusRegion: null,     // region id
     selectedId: null,
     hidden: new Set(),
+    placeById: {},
+    connections: null,
+    // how far the reach circle goes, per way of travelling: by time (minutes) or distance (km);
+    // value null = just far enough to take in the selected place's direct connections
+    reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
+    mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
+    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
   };
 
   let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
@@ -134,6 +210,7 @@
     if (!state.admin1Index[a3]) return Promise.resolve(null);
     if (!state.admin1Loading[a3]) {
       state.admin1Loading[a3] = getJSON("data/admin1/" + a3 + ".json").then(rewind).then((fc) => {
+        if (fc.land) fc.landFeature = rewind({ features: [{ type: "Feature", geometry: fc.land }] }).features[0];
         state.admin1[a3] = fc;
         fc.features.forEach((f) => { state.regionById[f.properties.id] = f; });
         locatePlaces();
@@ -166,6 +243,8 @@
     layers.linesA = el("g", {}, a);
     const b = el("g", { filter: "url(#ink-b)" }, svg);
     layers.linesB = el("g", {}, b);
+    const r = el("g", { filter: "url(#ink-fine)" }, svg);
+    layers.routes = el("g", { class: "routes" }, r);
     layers.marks = el("g", { filter: "url(#ink-fine)" }, svg);
   }
 
@@ -179,26 +258,34 @@
     const { fills, linesA, linesB } = layers;
     fills.innerHTML = linesA.innerHTML = linesB.innerHTML = "";
 
+    // Zoomed in, a country whose detail is loaded is drawn from it (1:10m), and the countries in
+    // view are loaded too, so neighbours keep sharing one border line that follows the regions.
+    detailShown = transform.k >= ADMIN_ZOOM;
     state.countries.features.forEach((f) => {
       const a3 = f.properties.a3;
-      const d = path(f);
-      if (!d) return;
-      const covered = !!state.admin1[a3];
-      el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false) + (covered ? " hidden-by-regions" : ""), "data-country": a3 }, fills);
       const fc = state.admin1[a3];
-      const od = fc && fc.outline ? path(fc.outline) : d;
-      el("path", Object.assign({ d: od, class: "country-line" }, ns), linesA);
-      el("path", Object.assign({ d: od, class: "country-line b" }, ns), linesB);
+      const d = path(detailShown && fc && fc.landFeature ? fc.landFeature : f);
+      if (!d) return;
+      el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false), "data-country": a3 }, fills);
+      // countries are simplified together, so a border shared by two neighbours is the very same
+      // line in both and the two strokes land exactly on top of each other: one pen line
+      el("path", Object.assign({ d, class: "country-line" }, ns), linesA);
     });
 
+    // regions are drawn for the country in focus and the countries with places; neighbours loaded
+    // only for their border stay one plain country
     Object.values(state.admin1).forEach((fc) => {
+      if (fc.country !== state.focusCountry && !state.dataCountries.has(fc.country)) return;
       fc.features.forEach((f) => {
         const id = f.properties.id;
         const d = path(f);
         if (!d) return;
         el("path", { d, class: areaClass("area region", id, state.dataRegions.has(id), id === state.focusRegion), "data-region": id, "data-country": f.properties.country }, fills);
-        el("path", Object.assign({ d, class: "region-line" }, ns), linesB);
       });
+      // the borders between regions, each drawn once, light and dashed; islands too small for the
+      // world map get their coast from here
+      if (fc.borders) el("path", Object.assign({ d: path(fc.borders), class: "region-line" }, ns), linesB);
+      if (fc.coast) el("path", Object.assign({ d: path(fc.coast), class: "country-line" }, ns), linesA);
     });
 
     state.lakes.features.forEach((f) => {
@@ -225,7 +312,6 @@
     if (focus) {
       const d = path(focus);
       el("path", Object.assign({ d, class: "focus-line" }, ns), linesA);
-      el("path", Object.assign({ d, class: "focus-line b" }, ns), linesB);
     }
     applyTransform();
   }
@@ -235,8 +321,333 @@
     layers.fills.setAttribute("transform", t);
     layers.linesA.setAttribute("transform", t);
     layers.linesB.setAttribute("transform", t);
+    layers.routes.setAttribute("transform", t);
     if (layers.rivers) layers.rivers.style.display = transform.k >= RIVER_ZOOM ? "" : "none";
     scheduleMarks();
+  }
+
+  // ---------- connections: a graph of places, each edge following the real way there ----------
+  const MODES = {
+    car: { get label() { return t("car"); }, get verb() { return t("byCar"); } },
+    bike: { get label() { return t("bike"); }, get verb() { return t("byBike"); } },
+    foot: { get label() { return t("foot"); }, get verb() { return t("onFoot"); } },
+  };
+  const MODE_ICONS = {
+    car: '<path d="M3 15.5v-3l2.2-4.3h10l3.8 4.3H21v3"/><path d="M5.6 12.2h13.2"/><circle cx="7.5" cy="16" r="1.9"/><circle cx="16.8" cy="16" r="1.9"/>',
+    bike: '<circle cx="6" cy="15.5" r="3.6"/><circle cx="18" cy="15.5" r="3.6"/><path d="M6 15.5l4-6.5h6l2 6.5M10 9l2.6 6.5H6M14.5 6.5h2.5"/>',
+    foot: '<circle cx="12.5" cy="4.6" r="1.8"/><path d="M12 7.5l-1.5 6 3.3 3 .9 5M10.5 13.5l-2.4 3.4-1.4 4.6M11.5 9l-3.3 2.3M12.4 9l3.3 2.4 2.1-.4"/>',
+  };
+  function fmtTime(min) {
+    if (min < 60) return min + " " + t("min");
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + " " + t("h") + (m ? " " + m : "");
+  }
+  // a way is shown when its route is no longer than the limit set for that mode
+  function routeOf(e, mode) { return mode && e[mode] && e[mode].km <= settings.limit[mode] ? e[mode] : null; }
+  // the way, from the place itself to the place itself (routes start on the nearest road)
+  function routeCoords(e, r) {
+    const a = state.placeById[e.a], b = state.placeById[e.b];
+    return [lnglat(a)].concat(r.path, [lnglat(b)]);
+  }
+  function drawRoutes() {
+    const g = layers.routes;
+    if (!g) return;
+    g.innerHTML = "";
+    const mode = state.mode, data = state.connections;
+    g.setAttribute("class", "routes " + (mode || "") + (state.selectedId ? " has-selection" : ""));
+    if (!mode || !data) return;
+    const ns = { "vector-effect": "non-scaling-stroke" };
+    const reach = currentReach();
+    data.edges.forEach((e) => {
+      const r = routeOf(e, mode);
+      const a = state.placeById[e.a], b = state.placeById[e.b];
+      if (!r || !a || !b || !a.location || !b.location) return;
+      if (state.hiddenPlace(a) || state.hiddenPlace(b)) return;
+      const d = path({ type: "LineString", coordinates: routeCoords(e, r) });
+      if (!d) return;
+      const lit = reach ? [e.a, e.b].some((id) => reach.has(id) && reach.get(id).e === e)
+        : state.selectedId && (e.a === state.selectedId || e.b === state.selectedId);
+      const grp = el("g", { class: "route" + (lit ? " lit" : "") }, g);
+      el("path", Object.assign({ d, class: "route-line" }, ns), grp);
+      el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
+      grp.dataset.tip = JSON.stringify([a.name, b.name, fmtTime(r.min), r.km + " " + t("km")]);
+    });
+  }
+  // Everything reachable from one place within a time or a distance, also through other places
+  // (Dijkstra over the connections). Returns id -> { min, km, prev, e } for each place in reach.
+  function reachFrom(id, mode, kind, limit) {
+    const w = (r) => (kind === "time" ? r.min : r.km);
+    const best = new Map([[id, { min: 0, km: 0, prev: null, e: null }]]);
+    const todo = [id], done = new Set();
+    while (todo.length) {
+      todo.sort((a, b) => w(best.get(a)) - w(best.get(b)));
+      const cur = todo.shift();
+      if (done.has(cur)) continue;
+      done.add(cur);
+      state.connections.edges.forEach((e) => {
+        if (e.a !== cur && e.b !== cur) return;
+        const r = routeOf(e, mode);
+        if (!r) return;
+        const other = e.a === cur ? e.b : e.a, p = state.placeById[other];
+        if (!p || state.hiddenPlace(p)) return;
+        const here = best.get(cur), next = { min: here.min + r.min, km: Math.round((here.km + r.km) * 10) / 10, prev: cur, e };
+        if (w(next) > limit) return;
+        if (!best.has(other) || w(next) < w(best.get(other))) { best.set(other, next); todo.push(other); }
+      });
+    }
+    return best;
+  }
+  // the default reach: a usual trip for this way of travelling (car 30 min, bike or walk 1 h),
+  // or just far enough for the nearest connection when nothing is that close
+  const REACH_DEFAULT = { car: { time: 30, distance: 25 }, bike: { time: 60, distance: 15 }, foot: { time: 60, distance: 5 } };
+  function defaultReach(id, mode, kind) {
+    const cs = connectionsOf(id, mode), base = REACH_DEFAULT[mode][kind];
+    if (!cs.length) return base;
+    const near = Math.min(...cs.map((c) => (kind === "time" ? c.r.min : c.r.km)));
+    return Math.max(base, kind === "time" ? Math.ceil(near / 5) * 5 : Math.ceil(near));
+  }
+  function reachSetting() {
+    if (!state.selectedId || !state.mode || !state.connections) return null;
+    const pref = state.reach[state.mode];
+    return { kind: pref.kind, value: pref.value != null ? pref.value : defaultReach(state.selectedId, state.mode, pref.kind) };
+  }
+  function currentReach() {
+    const r = reachSetting();
+    return r && reachFrom(state.selectedId, state.mode, r.kind, r.value);
+  }
+  // The circle is drawn as the crow flies, sized by how this mode's real routes usually go here:
+  // the typical straight-line km covered per minute, and how much longer a route usually is than
+  // the straight line. So places in reach sit near or inside the circle, and its edge is where a
+  // typical trip of that time or distance ends.
+  const median = (xs) => { const v = xs.slice().sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+  const routeStats = {};
+  function statsFor(mode) {
+    if (routeStats[mode]) return routeStats[mode];
+    const es = state.connections.edges.filter((e) => e[mode] && e[mode].min && e.straight_km > 0.5);
+    return (routeStats[mode] = {
+      crowPerMin: median(es.map((e) => e.straight_km / e[mode].min)) || 0.2,
+      detour: median(es.map((e) => e[mode].km / e.straight_km)) || 1.3,
+    });
+  }
+  const crowSpeed = (mode) => statsFor(mode).crowPerMin;
+  const fmtReach = (r) => (r.kind === "time" ? fmtTime(r.value) : r.value + " " + t("km"));
+
+  function connectionsOf(id, mode) {
+    if (!state.connections || !mode) return [];
+    return state.connections.edges
+      .filter((e) => (e.a === id || e.b === id) && routeOf(e, mode))
+      .map((e) => ({ other: state.placeById[e.a === id ? e.b : e.a], r: routeOf(e, mode), e }))
+      .filter((c) => c.other)
+      .sort((u, v) => u.r.min - v.r.min);
+  }
+  function setMode(mode) {
+    state.mode = mode;
+    try { localStorage.setItem("roots-mode", mode || "off"); } catch (err) { /* private window */ }
+    modesEl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    drawRoutes();
+    scheduleMarks();
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p) showPlace(p);
+  }
+  function renderModes() {
+    modesEl.setAttribute("aria-label", t("ways"));
+    modesEl.innerHTML = '<span class="modes-title">' + t("ways") + '</span><span class="modes-row">' + Object.entries(MODES).map(([m, v]) =>
+      '<button type="button" data-mode="' + m + '" aria-pressed="' + (state.mode === m) + '">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true" class="mode-icon">' + MODE_ICONS[m] + "</svg>" +
+      '<svg viewBox="0 0 30 8" aria-hidden="true" class="swatch ' + m + '"><path d="M1 4.5 Q 8 1.5 15 4 T 29 3.5"/></svg>' +
+      "<span>" + v.label + "</span></button>").join("") + "</span>";
+    modesEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setMode(state.mode === b.dataset.mode ? null : b.dataset.mode)));
+    panelBoxes = null;
+  }
+
+  // ---------- settings: language and how far each way of travelling is shown ----------
+  const settingsBtn = $("settings-btn"), settingsEl = $("settings");
+  function applyStaticText() {
+    document.documentElement.lang = settings.lang;
+    document.querySelectorAll("[data-t]").forEach((n) => { n.innerHTML = t(n.dataset.t); });
+    document.querySelectorAll("[data-t-label]").forEach((n) => n.setAttribute("aria-label", t(n.dataset.tLabel)));
+    settingsBtn.setAttribute("aria-label", t("settings"));
+    settingsBtn.title = t("settings");
+  }
+  const limitText = (m) => (settings.limit[m] === Infinity ? t("noLimit") : settings.limit[m] + " " + t("km"));
+  function renderSettings() {
+    settingsEl.innerHTML =
+      '<h2 class="settings-title">' + t("settings") + "</h2>" +
+      '<fieldset class="settings-lang"><legend>' + t("language") + "</legend>" +
+      [["en", "English"], ["es", "Español"]].map(([code, name]) =>
+        '<button type="button" data-lang="' + code + '" aria-pressed="' + (settings.lang === code) + '">' + name + "</button>").join("") +
+      "</fieldset>" +
+      '<fieldset class="settings-limits"><legend>' + t("showWays") + "</legend>" +
+      Object.keys(LIMITS).map((m) => {
+        const L = LIMITS[m], none = L.def === Infinity;
+        // the car slider's last step means "no limit"
+        const top = none ? L.max + 5 : L.max, v = settings.limit[m] === Infinity ? top : settings.limit[m];
+        return '<label class="limit-row"><svg viewBox="0 0 24 24" aria-hidden="true" class="mode-icon">' + MODE_ICONS[m] + "</svg>" +
+          '<span class="limit-name">' + MODES[m].label + "</span>" +
+          '<input type="range" min="' + (m === "foot" ? 2 : 5) + '" max="' + top + '" step="1" value="' + v + '" data-limit="' + m + '"' + (none ? ' data-open="' + top + '"' : "") + ">" +
+          '<output class="limit-value ' + m + '">' + limitText(m) + "</output></label>";
+      }).join("") +
+      "</fieldset>" +
+      '<button type="button" class="settings-done">' + t("done") + "</button>";
+    settingsEl.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+      settings.lang = b.dataset.lang;
+      saveSettings();
+      refreshAll();
+      renderSettings();
+      settingsEl.querySelector('[data-lang="' + settings.lang + '"]').focus();
+    }));
+    settingsEl.querySelectorAll("[data-limit]").forEach((inp) => inp.addEventListener("input", () => {
+      const m = inp.dataset.limit, v = +inp.value;
+      settings.limit[m] = inp.dataset.open && v >= +inp.dataset.open ? Infinity : v;
+      inp.nextElementSibling.textContent = limitText(m);
+      saveSettings();
+      drawRoutes();
+      scheduleMarks();
+      const p = state.selectedId && state.placeById[state.selectedId];
+      if (p) showPlace(p);
+    }));
+    settingsEl.querySelector(".settings-done").addEventListener("click", () => toggleSettings(false));
+  }
+  function toggleSettings(open) {
+    const show = open === undefined ? settingsEl.hidden : open;
+    settingsEl.hidden = !show;
+    settingsBtn.setAttribute("aria-expanded", String(show));
+    if (show) { renderSettings(); settingsEl.querySelector("button").focus(); } else settingsBtn.focus();
+  }
+  settingsBtn.addEventListener("click", () => toggleSettings());
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !settingsEl.hidden) toggleSettings(false); });
+  document.addEventListener("pointerdown", (ev) => {
+    if (!settingsEl.hidden && !settingsEl.contains(ev.target) && !settingsBtn.contains(ev.target)) toggleSettings(false);
+  });
+  // after a language change, every piece of text is written again
+  function refreshAll() {
+    applyStaticText();
+    renderModes();
+    renderHeading();
+    renderList();
+    drawRoutes();
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p) showPlace(p); else showWelcome();
+    scheduleMarks();
+  }
+
+  // ---------- hovering a way: a small tag in the name-tag style, following the pointer ----------
+  const tipEl = document.createElement("div");
+  tipEl.className = "route-tip";
+  tipEl.hidden = true;
+  svg.parentNode.appendChild(tipEl);
+  svg.addEventListener("pointermove", (ev) => {
+    const r = !moving && ev.target.closest && ev.target.closest(".route");
+    if (!r || !r.dataset.tip) { tipEl.hidden = true; return; }
+    const [a, b, time, km] = JSON.parse(r.dataset.tip);
+    tipEl.className = "route-tip " + state.mode;
+    tipEl.innerHTML = '<span class="tip-names"><b>' + esc(a) + "</b> – <b>" + esc(b) + '</b></span><span class="tip-row"><svg viewBox="0 0 30 8" aria-hidden="true" class="swatch ' + state.mode + '"><path d="M1 4.5 Q 8 1.5 15 4 T 29 3.5"/></svg>' + esc(time) + " · " + esc(km) + "</span>";
+    tipEl.hidden = false;
+    const box = svg.parentNode.getBoundingClientRect(), w = tipEl.offsetWidth;
+    let x = ev.clientX - box.left + 14, y = ev.clientY - box.top + 16;
+    if (x + w > box.width - 8) x = ev.clientX - box.left - w - 14;
+    tipEl.style.left = x + "px";
+    tipEl.style.top = y + "px";
+  });
+  svg.addEventListener("pointerleave", () => { tipEl.hidden = true; });
+
+  // ---------- the reach circle ----------
+  // screen pixels per km around a place, at the current zoom
+  function pxPerKm(p) {
+    const [x, y] = projection(lnglat(p)), [, y2] = projection([p.location.lng, p.location.lat + 1 / 111.2]);
+    return Math.abs(y2 - y) * transform.k;
+  }
+  function reachRadiusKm(r) { return r.kind === "time" ? r.value * crowSpeed(state.mode) : r.value / statsFor(state.mode).detour; }
+  // from a radius on the map back to a time or distance
+  function reachFromRadius(km, kind) {
+    return kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km * statsFor(state.mode).detour));
+  }
+  let reachDrag = null;
+  function drawReachCircle(g, r, boxes) {
+    const p = state.placeById[state.selectedId];
+    const [cx, cy] = transform.apply(projection(lnglat(p)));
+    const rad = Math.max(14, reachRadiusKm(r) * pxPerKm(p));
+    const grp = el("g", { class: "reach " + state.mode }, null);
+    g.insertBefore(grp, g.firstChild); // under the icons
+    el("circle", { class: "reach-fill", cx, cy, r: rad }, grp);
+    el("circle", { class: "reach-line", cx, cy, r: rad }, grp);
+    const edge = el("circle", { class: "reach-edge", cx, cy, r: rad, tabindex: "0", role: "slider",
+      "aria-label": t("reachHelp"), "aria-valuetext": fmtReach(r) }, grp);
+    // a little knob on the circle, bottom right, shows where to grab it (the whole edge works too)
+    const ka = Math.PI / 4, kx = cx + Math.cos(ka) * rad, ky = cy + Math.sin(ka) * rad;
+    const knob = el("g", { class: "reach-knob" }, g);
+    el("circle", { cx: kx, cy: ky, r: 7 }, knob);
+    el("path", { d: "M" + (kx - 3) + " " + (ky - 3) + "l6 6m-6 -2.5v2.5h2.5m3.5 -6h-2.5m2.5 0v2.5" }, knob);
+    // the value sits on the circle, top left, written like a name tag; tap it to switch time / distance.
+    // When the circle grows past the edge of the map or under the note, the tag slides along the
+    // circle to the nearest spot that is still in view.
+    const label = fmtReach(r), tw = textWidth(label, "700 12px Kalam, cursive") + 46;
+    const tagAt = (ang) => {
+      const px = cx + Math.cos(ang) * rad, py = cy + Math.sin(ang) * rad;
+      return { lx: px - tw + 4, ly: py }; // the tag's right end touches the circle
+    };
+    // the note's real size (it grows with the place's details), in map coordinates
+    const M = svg.getScreenCTM(), nr = document.getElementById("note").getBoundingClientRect();
+    const noteBox = M && nr.width ? { x: (nr.left - M.e) / M.a - 6, y: (nr.top - M.f) / M.d - 6, w: nr.width / M.a + 12, h: nr.height / M.d + 12 } : null;
+    const free = ({ lx, ly }) => {
+      const b = { x: lx - 4, y: ly - 10, w: tw, h: 20 };
+      if (noteBox && b.x < noteBox.x + noteBox.w && b.x + b.w > noteBox.x && b.y < noteBox.y + noteBox.h && b.y + b.h > noteBox.y) return false;
+      return b.x > 6 && b.y > 6 && b.x + b.w < W - 6 && b.y + b.h < H - 6 &&
+        !boxes.some((o) => b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y);
+    };
+    let spot = null;
+    for (let s = 0; s <= 36 && !spot; s++) {
+      for (const sign of s ? [1, -1] : [1]) {
+        const q = tagAt(-0.75 * Math.PI + sign * s * Math.PI / 36);
+        if (free(q)) { spot = q; break; }
+      }
+    }
+    // nowhere on the circle is in view (zoomed right in): keep it inside the map, near the top left
+    if (!spot) { const q = tagAt(-0.75 * Math.PI); spot = { lx: Math.min(Math.max(q.lx, 10), W - tw - 6), ly: Math.min(Math.max(q.ly, 110), H - 70) }; }
+    const { lx, ly } = spot;
+    boxes.push({ x: lx - 4, y: ly - 10, width: tw, w: tw, h: 20 });
+    const tag = el("g", { class: "reach-tag " + state.mode, tabindex: "0", role: "button", "aria-label": label + ". " + t("reachHelp") }, g);
+    el("rect", { x: lx - 4, y: ly - 10, width: tw, height: 20, rx: 3 }, tag);
+    el("path", { class: "sample", d: "M" + lx + " " + (ly + 1) + "q4 -3 8 0t8 -.5" }, tag);
+    el("text", { x: lx + 21, y: ly + 4 }, tag).textContent = label;
+    el("path", { class: "swap", d: "M" + (lx + tw - 13) + " " + (ly - 3) + "h7m-2 -2.5l2 2.5-2 2.5M" + (lx + tw - 6) + " " + (ly + 3) + "h-7m2 -2.5l-2 2.5 2 2.5" }, tag);
+    const toggle = () => {
+      const pref = state.reach[state.mode], cur = reachSetting();
+      // keep roughly the same reach when switching: convert at this mode's straight-line speed
+      const km = reachRadiusKm(cur);
+      pref.kind = pref.kind === "time" ? "distance" : "time";
+      pref.value = reachFromRadius(km, pref.kind);
+      reachChanged();
+    };
+    tag.addEventListener("click", toggle);
+    tag.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+    edge.addEventListener("keydown", (ev) => {
+      const step = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
+      if (!step) return;
+      ev.preventDefault();
+      const cur = reachSetting(), pref = state.reach[state.mode];
+      pref.value = Math.max(cur.kind === "time" ? 5 : 1, cur.value + step * (cur.kind === "time" ? 5 : 1));
+      reachChanged();
+    });
+    d3.selectAll([edge, knob]).call(d3.drag()
+      .on("start", () => { reachDrag = { cx, cy, p }; svg.classList.add("dragging-reach"); })
+      .on("drag", (ev) => {
+        const [mx, my] = d3.pointer(ev.sourceEvent, svg);
+        const km = Math.hypot(mx - reachDrag.cx, my - reachDrag.cy) / pxPerKm(reachDrag.p);
+        const pref = state.reach[state.mode];
+        pref.value = reachFromRadius(km, pref.kind);
+        reachChanged(true);
+      })
+      .on("end", () => { reachDrag = null; svg.classList.remove("dragging-reach"); reachChanged(); }));
+  }
+  let notePending = 0;
+  function reachChanged(dragging) {
+    drawRoutes();
+    scheduleMarks();
+    // the note is rewritten at most a few times a second while dragging
+    clearTimeout(notePending);
+    const p = state.placeById[state.selectedId];
+    if (p) notePending = setTimeout(() => showPlace(p), dragging ? 120 : 0);
   }
 
   // ---------- labels and icons, placed so nothing overlaps ----------
@@ -273,6 +684,17 @@
     if (busy) animFrame = requestAnimationFrame(animate);
   }
 
+  // where the swatch and zoom buttons sit on the map, measured once per layout (not every frame)
+  let panelBoxes = null;
+  function measurePanels() {
+    panelBoxes = [];
+    const M = svg.getScreenCTM();
+    if (M) [modesEl, document.querySelector(".zoom")].forEach((n) => {
+      const r = n && n.getBoundingClientRect();
+      if (r && r.width) panelBoxes.push({ x: (r.left - M.e) / M.a - 4, y: (r.top - M.f) / M.d - 4, w: r.width / M.a + 8, h: r.height / M.d + 8 });
+    });
+  }
+
   function drawMarks() {
     const g = layers.marks;
     g.innerHTML = "";
@@ -284,6 +706,11 @@
     // keep the heading (top-left) and the note (top-right) clear
     if (!narrow()) boxes.push({ x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
     boxes.push({ x: 0, y: 0, w: Math.min(W * 0.55, 440), h: 96 });
+    // and the swatch and zoom buttons along the bottom
+    if (!panelBoxes) measurePanels();
+    panelBoxes.forEach((b) => boxes.push(b));
+    // a place under the swatch or the zoom buttons is treated like one just off the edge of the map
+    const underPanel = (x, y) => panelBoxes.some((b) => x > b.x - 6 && x < b.x + b.w + 6 && y > b.y - 6 && y < b.y + b.h + 6);
 
     const visible = state.places.filter((p) => p.location && !p.categories.every((c) => state.hidden.has(c)));
 
@@ -296,7 +723,7 @@
         const x = d3.mean(pts, (q) => q[0]), y = d3.mean(pts, (q) => q[1]);
         if (!inView(x, y, 20)) return;
         const r = 11 + Math.min(10, Math.sqrt(ps.length) * 2);
-        const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-country": a3, "aria-label": ps.length + " places, zoom in" }, g);
+        const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-country": a3, "aria-label": t("clusterCountry", ps.length) }, g);
         el("circle", { cx: x, cy: y, r }, grp);
         el("circle", { class: "ring", cx: x + 1, cy: y - 1, r: r + 2.5 }, grp);
         el("text", { x, y: y + 5, "text-anchor": "middle" }, grp).textContent = ps.length;
@@ -351,7 +778,7 @@
     const clusterPos = new Map();
     if (k >= ADMIN_ZOOM) visible.forEach((p) => {
       const [x0, y0] = transform.apply(projection(lnglat(p)));
-      if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
+      if (inView(x0, y0, 40) && !underPanel(x0, y0)) pts.push({ p, x0, y0 });
     });
     const reach = size * 1.7;
     const parent = pts.map((_, i) => i);
@@ -521,7 +948,7 @@
       const n = G.members.length, r = G.r;
       G.members.forEach((q) => clusterPos.set(q.p.id, [G.x, G.y, G.x - q.x0, G.y - q.y0]));
       const ids = G.members.map((q) => q.p.id).join(" ");
-      const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-ids": ids, "aria-label": n + " places close together, zoom in" }, g);
+      const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-ids": ids, "aria-label": t("clusterNear", n) }, g);
       el("circle", { cx: G.x, cy: G.y, r }, grp);
       el("circle", { class: "ring", cx: G.x + 1, cy: G.y - 1, r: r + 2.5 }, grp);
       el("text", { x: G.x, y: G.y + 5, "text-anchor": "middle" }, grp).textContent = n;
@@ -529,6 +956,8 @@
       boxes.push({ x: G.x - r - 3, y: G.y - r - 3, w: 2 * r + 6, h: 2 * r + 6 });
     });
 
+    const reachNow = currentReach(), reachSet = reachSetting();
+    const tripTo = reachSet && reachFrom(state.selectedId, state.mode, "time", Infinity);
     // 2. draw the icons. Each one glides from where it was last shown to its new spot, and icons
     //    that join a numbered circle glide into it and fade, so nothing jumps while zooming.
     const prev = anims;
@@ -557,7 +986,7 @@
     placed.forEach((it) => {
       const p = it.p;
       const grp = el("g", {
-        class: "place" + (state.selectedId === p.id ? " selected" : ""),
+        class: "place" + (state.selectedId === p.id ? " selected" : "") + (reachNow && !reachNow.has(p.id) ? " far" : ""),
         tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
       }, g);
       // a dot on the real spot and a pen line that stops at the icon's edge (shown when moved aside)
@@ -565,12 +994,30 @@
       const spot = el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
       const body = drawBody(it, grp);
       // name tag, shown on hover, keyboard focus or selection (CSS); flips left near the right edge
-      const tw = textWidth(p.name, "700 12px Kalam, cursive") + 12;
+      // With a place selected, every other place's tag also tells the whole trip there. Inside the
+      // circle the way's label already gives the time (or the distance), so the tag adds the other
+      // one; outside the circle it gives both.
+      const inReach = reachNow && state.selectedId !== p.id && reachNow.get(p.id);
+      const trip = inReach || (tripTo && state.selectedId !== p.id && tripTo.get(p.id));
+      const tripFull = trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "";
+      const tripText = !trip ? "" : !inReach ? tripFull : reachSet.kind === "time" ? trip.km + " " + t("km") : fmtTime(trip.min);
+      const nameW = textWidth(p.name, (state.selectedId === p.id ? "700" : "400") + " 12px Kalam, cursive") + 12;
+      const tw = trip ? nameW + 22 + textWidth(tripText, "400 12px Kalam, cursive") + 6 : textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
       const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
+      if (state.selectedId === p.id) boxes.push({ x: tx, y: it.y - 10, w: tw, h: 20 }); // its name is always shown
       const tag = el("g", { class: "name-tag" }, body);
-      el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
-      el("text", { x: tx + 6, y: it.y + 4 }, tag).textContent = p.name;
+      const tagRect = el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
+      const tagText = el("text", { x: tx + 6, y: it.y + 4 }, tag);
+      tagText.textContent = p.name;
+      let sample = null, timeText = null;
+      if (trip) {
+        grp.classList.add("has-way", state.mode);
+        sample = el("path", { class: "sample", d: "M" + (tx + nameW) + " " + (it.y + 1) + "q4 -3 8 0t8 -.5" }, tag);
+        timeText = el("text", { class: "time", x: tx + nameW + 22, y: it.y + 4 }, tag);
+        timeText.textContent = tripText;
+      }
+      grp._tag = { tag, rect: tagRect, text: tagText, sample, timeText, tx, y: it.y, tw, nameW, right, trip, tripFull };
       const dx = it.x - it.x0, dy = it.y - it.y0;
       const st = startFrom(p.id, it.x0, it.y0, dx, dy);
       anims.push({ p, grp, body, leader, spot, x0: it.x0, y0: it.y0, w: it.w, h: size, dx, dy,
@@ -594,21 +1041,86 @@
     prevClusters = clusterPos;
     animate(now);
 
+    // 2a. the reach circle: dashed, around the selected place, drag its edge to reach further
+    if (reachNow && k >= ADMIN_ZOOM) drawReachCircle(g, reachSet, boxes);
+
     if (moving) return; // labels and towns wait until the map stops moving
+
+    // the time added to another place's name tag, with a short stroke of the way's line
+    function tagTime(other) {
+      const og = [...g.querySelectorAll(".place")].find((n) => n.dataset.id === other.id);
+      const T = og && og._tag;
+      if (!T || !T.trip) return;
+      // no label on the way, so this tag shows the whole trip, time and distance
+      const w = T.nameW + 22 + textWidth(T.tripFull, "400 12px Kalam, cursive") + 6;
+      const x0 = T.right ? T.tx : T.tx + T.tw - w;
+      const box = { x: x0, y: T.y - 10, w, h: 20 };
+      if (hits(box)) return; // no room: the note still lists it
+      boxes.push(box);
+      T.rect.setAttribute("x", x0);
+      T.rect.setAttribute("width", w);
+      T.text.setAttribute("x", x0 + 6);
+      T.sample.setAttribute("d", "M" + (x0 + T.nameW) + " " + (T.y + 1) + "q4 -3 8 0t8 -.5");
+      T.timeText.setAttribute("x", x0 + T.nameW + 22);
+      T.timeText.textContent = T.tripFull;
+      og.classList.add("linked");
+    }
+    // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
+    if (reachNow && k >= ADMIN_ZOOM) {
+      [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
+        other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
+      })).forEach((c) => {
+        const pts = routeCoords(c.e, c.r).map((q) => transform.apply(projection(q)));
+        // the total from the selected place to the far end of this stretch, the same number the
+        // circle compares with, so a place lights up exactly when the circle reaches its label
+        const label = reachSet.kind === "time" ? fmtTime(c.info.min) : c.info.km + " " + t("km");
+        const tw = textWidth(label, "400 12px Kalam, cursive") + 30; // room for a little sample of the line
+        // half way along the way, or the nearest free spot along it
+        let at = null, bx = null;
+        // walk the way's real length, from the middle outwards, nudging the tag above or below the line
+        const seg = [0];
+        for (let i = 1; i < pts.length; i++) seg.push(seg[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        const total = seg[seg.length - 1];
+        const pointAt = (d) => {
+          let i = 1;
+          while (i < seg.length - 1 && seg[i] < d) i++;
+          const u = (d - seg[i - 1]) / ((seg[i] - seg[i - 1]) || 1);
+          return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * u, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * u];
+        };
+        search: for (let s = 0; s <= 8; s++) {
+          for (const sign of s ? [-1, 1] : [1]) {
+            const q = pointAt(total * (0.5 + sign * s * 0.05));
+            for (const dy of [0, -14, 14]) {
+              const b = { x: q[0] - tw / 2, y: q[1] - 10 + dy, w: tw, h: 20 };
+              if (inView(q[0], q[1], -10) && !hits(b)) { at = [q[0], q[1] + dy]; bx = b; break search; }
+            }
+          }
+        }
+        // too short to write on at this zoom: the total goes on the place's own name tag
+        if (!bx) return tagTime(c.other);
+        boxes.push(bx);
+        // drawn like a place's name tag, with a short stroke of the way's own line in front
+        const tg = el("g", { class: "route-time " + state.mode }, g);
+        el("rect", { x: bx.x, y: bx.y, width: tw, height: 20, rx: 3 }, tg);
+        el("path", { class: "sample", d: "M" + (bx.x + 6) + " " + (at[1] + 1) + "q4 -3 8 0t8 -.5" }, tg);
+        el("text", { x: bx.x + 26, y: at[1] + 4 }, tg).textContent = label;
+      });
+    }
 
     // 3. region names (inside countries whose regions are drawn), then country names
     const areaLabels = [];
-    if (k >= ADMIN_ZOOM) Object.values(state.admin1).forEach((fc) => fc.features.forEach((f) => areaLabels.push({ f, kind: "region" })));
+    const regionsShown = (a3) => !!state.admin1[a3] && (a3 === state.focusCountry || state.dataCountries.has(a3));
+    if (k >= ADMIN_ZOOM) Object.values(state.admin1).forEach((fc) => { if (regionsShown(fc.country)) fc.features.forEach((f) => areaLabels.push({ f, kind: "region" })); });
     state.countries.features.forEach((f) => areaLabels.push({ f, kind: "country" }));
     areaLabels.forEach(({ f, kind }) => {
-      if (kind === "country" && state.admin1[f.properties.a3] && k >= ADMIN_ZOOM) return;
+      if (kind === "country" && regionsShown(f.properties.a3) && k >= ADMIN_ZOOM) return;
       const b = f._pb || (f._pb = path.bounds(f));
       const wpx = (b[1][0] - b[0][0]) * k, hpx = (b[1][1] - b[0][1]) * k;
       if (wpx < 70 || hpx < 26) return;
       if (!f._anchor) f._anchor = d3.geoCentroid(f);
       const [x, y] = transform.apply(projection(f._anchor));
       if (!inView(x, y, 0)) return;
-      const text = f.properties.name.toUpperCase();
+      const text = countryName(f).toUpperCase();
       const fs = kind === "country" ? Math.min(16, 10 + wpx / 80) : Math.min(14, 9 + wpx / 90);
       const font = (kind === "country" ? "400 " : "300 ") + fs + "px Kalam, cursive";
       const tw = textWidth(text, font) * 1.12 + 4;
@@ -668,7 +1180,19 @@
     d3.select(svg).transition().duration(reduceMotion() ? 0 : 650).call(zoom.transform, t);
   }
 
+  // zoomed in: load the detailed shape of every country in view (a few at most at this zoom)
+  let detailShown = false;
+  function loadCountriesInView() {
+    if (transform.k < ADMIN_ZOOM) return;
+    const corners = [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H]].map((q) => projection.invert(transform.invert(q)));
+    const lon0 = d3.min(corners, (c) => c[0]), lon1 = d3.max(corners, (c) => c[0]);
+    const lat0 = d3.min(corners, (c) => c[1]), lat1 = d3.max(corners, (c) => c[1]);
+    const inView = Object.entries(state.admin1Index).filter(([, b]) => b[0] < lon1 && b[2] > lon0 && b[1] < lat1 && b[3] > lat0);
+    if (inView.length <= 16) inView.forEach(([a3]) => loadAdmin1(a3));
+  }
   function onZoomEnd() {
+    loadCountriesInView();
+    if ((transform.k >= ADMIN_ZOOM) !== detailShown) buildGeo();
     if (transform.k >= RIVER_ZOOM && !state.rivers && !state.riversLoading) {
       state.riversLoading = getJSON("data/world/rivers.json").then((r) => { state.rivers = r; buildGeo(); });
     }
@@ -694,18 +1218,18 @@
   }
 
   function renderHeading() {
-    const crumbs = [{ label: "World", go: () => { select(null); setFocus({}); } }];
-    let title = "The world";
+    const crumbs = [{ label: t("world"), go: () => { select(null); setFocus({}); } }];
+    let title = t("theWorld");
     const c = state.focusCountry && state.countryById[state.focusCountry];
     if (c) {
-      title = c.properties.name;
-      if (state.focusRegion) crumbs.push({ label: c.properties.name, go: () => { select(null); setFocus({ country: c.properties.a3 }); } });
+      title = countryName(c);
+      if (state.focusRegion) crumbs.push({ label: countryName(c), go: () => { select(null); setFocus({ country: c.properties.a3 }); } });
     }
     const r = state.focusRegion && state.regionById[state.focusRegion];
     if (r) title = r.properties.name;
     // the name of the area, with how many places it has in a pen-drawn circle
     const n = placesInFocus().length;
-    mapTitleEl.innerHTML = '<span class="title-name">' + esc(title) + "</span>" + (n ? ' <span class="title-count" title="' + n + " place" + (n === 1 ? "" : "s") + ' on the map">' + n + "</span>" : "");
+    mapTitleEl.innerHTML = '<span class="title-name">' + esc(title) + "</span>" + (n ? ' <span class="title-count" title="' + t("placesOnMap", n) + '">' + n + "</span>" : "");
     crumbsEl.innerHTML = "";
     if (c) crumbs.forEach((cr) => {
       const li = document.createElement("li");
@@ -727,13 +1251,13 @@
   function focusName() {
     const r = state.focusRegion && state.regionById[state.focusRegion];
     const c = state.focusCountry && state.countryById[state.focusCountry];
-    return r ? r.properties.name : c ? c.properties.name : "the world";
+    return r ? r.properties.name : c ? countryName(c) : t("theWorldIn");
   }
 
   function renderList() {
     const here = placesInFocus();
     listTitleEl.hidden = here.length > 0;
-    listTitleEl.textContent = here.length ? "" : "No places in " + focusName() + " yet";
+    listTitleEl.textContent = here.length ? "" : t("noPlacesIn", focusName());
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {
       const places = here.filter((p) => p.categories.includes(c.id));
@@ -743,12 +1267,13 @@
       if (state.hidden.has(c.id)) group.setAttribute("data-off", "");
       group.innerHTML =
         '<button class="legend-head" type="button" aria-pressed="' + !state.hidden.has(c.id) + '" title="' + esc(c.label_it || c.label_en) + '">' +
-        iconSvg(c.id, 26) + '<span class="label">' + esc(c.label_en) + '</span><span class="count">' + places.length + "</span></button>" +
+        iconSvg(c.id, 26) + '<span class="label">' + esc(catLabel(c)) + '</span><span class="count">' + places.length + "</span></button>" +
         "<ul>" + places.map((p) => '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button></li>").join("") + "</ul>";
       const head = group.querySelector(".legend-head");
       head.addEventListener("click", () => {
         if (state.hidden.has(c.id)) state.hidden.delete(c.id); else state.hidden.add(c.id);
         renderList();
+        drawRoutes();
         scheduleMarks();
       });
       group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { zoom: true })));
@@ -761,28 +1286,45 @@
     noteEl.dataset.tone = "green";
     const n = placesInFocus().length;
     noteEl.innerHTML = state.focusRegion || state.focusCountry
-      ? (n ? '<p class="hint">Tap a place</p><p>' + n + " places in " + esc(focusName()) + ". Tap a type in the list to hide or show it, or a neighbouring region to move there.</p>"
-           : '<p class="hint">' + esc(focusName()) + "</p><p>No places here yet. Brown regions have places; grey ones are still empty.</p>")
-      : '<p class="hint">Zoom in or tap a country</p><p>Brown areas have places, grey ones are still empty.</p>';
+      ? (n ? '<p class="hint">' + t("tapPlace") + "</p><p>" + esc(t("welcome", n, focusName())) + "</p>"
+           : '<p class="hint">' + esc(focusName()) + "</p><p>" + t("emptyHere") + "</p>")
+      : '<p class="hint">' + t("zoomOrTap") + "</p><p>" + t("worldHint") + "</p>";
   }
 
   function showPlace(p) {
     noteEl.dataset.tone = NOTE_TONES[state.places.indexOf(p) % NOTE_TONES.length];
-    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 24) + esc(state.catById[c] ? state.catById[c].label_en : c) + "</span>").join("");
-    const site = p.website ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>" : "not added yet";
+    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 24) + esc(state.catById[c] ? catLabel(state.catById[c]) : c) + "</span>").join("");
+    const site = p.website ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>" : t("notYet");
     noteEl.innerHTML =
-      '<button class="close" type="button" aria-label="Close">×</button>' +
+      '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
       "<h2>" + esc(p.name) + "</h2>" +
       '<div class="kinds">' + kinds + "</div>" +
-      "<p>" + (p.description ? esc(p.description) : "No description yet.") + "</p>" +
-      "<dl><dt>where</dt><dd>" + esc(p.near || "") + "</dd>" +
-      "<dt>website</dt><dd>" + site + "</dd>" +
-      "<dt>contact</dt><dd>" + (p.contact ? esc(p.contact) : "not added yet") + "</dd></dl>";
+      "<p>" + (p.description ? esc(p.description) : t("noDescription")) + "</p>" +
+      "<dl><dt>" + t("where") + "</dt><dd>" + esc(p.near || "") + "</dd>" +
+      "<dt>" + t("website") + "</dt><dd>" + site + "</dd>" +
+      "<dt>" + t("contact") + "</dt><dd>" + (p.contact ? esc(p.contact) : t("notYet")) + "</dd></dl>" +
+      connectionsNote(p);
     noteEl.querySelector(".close").addEventListener("click", () => select(null));
+    noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
+  }
+
+  function connectionsNote(p) {
+    if (!state.mode || !state.connections) return "";
+    const r = reachSetting(), reach = currentReach();
+    const title = '<h3 class="ways-title">' + t("nearbyTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>";
+    const list = [...reach.entries()].filter(([id]) => id !== p.id).sort((a, b) => a[1].min - b[1].min);
+    if (!list.length) return title + '<p class="ways">' + t("reachNone") + "</p>";
+    return title + '<ul class="ways">' + list.map(([id, info]) => {
+      const o = state.placeById[id], via = info.prev !== p.id ? state.placeById[info.prev] : null;
+      return '<li><span class="who"><button type="button" data-go="' + esc(id) + '">' + esc(o.name) + "</button>" +
+        (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
+        "<span>" + fmtTime(info.min) + " · " + info.km + " " + t("km") + "</span></li>";
+    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>";
   }
 
   function select(id, opts) {
     state.selectedId = id;
+    drawRoutes();
     const p = id && state.places.find((x) => x.id === id);
     if (!p) {
       showWelcome();
@@ -862,6 +1404,8 @@
       .on("end", () => { moving = false; svg.classList.remove("moving"); onZoomEnd(); scheduleMarks(); });
     d3.select(svg).call(zoom).on("dblclick.zoom", null);
     buildGeo();
+    drawRoutes();
+    panelBoxes = null;
   }
 
   let resizeTimer;
@@ -892,6 +1436,12 @@
     getJSON("data/admin1/index.json"),
   ]).then(([places, countries, lakes, index]) => {
     state.places = places.places;
+    state.placeById = Object.fromEntries(state.places.map((p) => [p.id, p]));
+    if (!MODES[state.mode]) state.mode = state.mode ? "bike" : null;
+    applyStaticText();
+    renderModes();
+    // the connections are small; draw them as soon as they arrive
+    getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); }).catch(() => {});
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
