@@ -17,7 +17,8 @@ into .cache/ from download.geonames.org, or from a mirror of the same file on Gi
 import json, os, re, unicodedata, urllib.request
 from shapely.geometry import shape, mapping
 from shapely.geometry.polygon import orient
-from shapely.ops import unary_union
+from shapely.ops import unary_union, linemerge, polygonize
+from shapely import STRtree
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, ".cache")
@@ -74,6 +75,51 @@ def geom(g, n):
     return {"type": m["type"], "coordinates": rnd(m["coordinates"], n)}
 
 
+def faces(items, tol):
+    """Simplify a set of neighbouring areas together, so they keep meeting exactly.
+
+    items is a list of (id, geometry). Every border is cut into lines between the points where
+    three or more areas meet, each line is simplified once, and the areas are rebuilt from those
+    shared lines. So two neighbours share the very same border line (one pen line, never two
+    lines side by side), and nothing opens up between them. Returns ({id: geometry}, inner lines),
+    where inner lines are the borders between two of the areas (not their outside edge)."""
+    geoms = [g for _, g in items]
+    merged = unary_union([g.boundary for g in geoms])
+    if merged.geom_type == "MultiLineString":
+        merged = linemerge(merged)
+    merged = list(merged.geoms) if hasattr(merged, "geoms") else [merged]
+    outline = unary_union(geoms).boundary
+    simple, inner = [], []
+    for line in merged:
+        s = line.simplify(tol)
+        if s.length == 0:
+            continue
+        simple.append(s)
+        if line.interpolate(0.5, normalized=True).distance(outline) > 1e-7:
+            inner.append(s)
+    tree = STRtree(geoms)
+    out = {}
+    for poly in polygonize(unary_union(simple)):
+        pt = poly.representative_point()
+        hit = tree.query(pt, predicate="intersects")
+        if not len(hit):
+            i = tree.nearest(pt)
+            if geoms[i].distance(pt) > tol:
+                continue  # a lake or sea closed in by land, not part of any area
+            hit = [i]
+        out.setdefault(items[hit[0]][0], []).append(poly)
+    return {k: unary_union(v).buffer(0) for k, v in out.items()}, inner
+
+
+def only(g, kinds):
+    """The parts of a geometry of the given kinds ("Polygon" or "LineString"), as one geometry."""
+    if g.geom_type.startswith("Multi") or g.geom_type == "GeometryCollection":
+        parts = [p for p in g.geoms if p.geom_type.endswith(kinds)]
+    else:
+        parts = [g] if g.geom_type.endswith(kinds) else []
+    return unary_union(parts) if parts else type(g)() if not g.geom_type == "GeometryCollection" else g.__class__()
+
+
 def slug(s):
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
@@ -89,15 +135,17 @@ def write(rel, obj):
 
 def main():
     # countries
+    # all countries are simplified together, so neighbours share one border line
     feats = []
-    for f in load("50m_admin_0_countries"):
+    src = [f for f in load("50m_admin_0_countries") if f["properties"]["ADM0_A3"] != "ATA"]  # Antarctica is left off the map
+    country_shape, _ = faces([(f["properties"]["ADM0_A3"], shape(f["geometry"]).buffer(0)) for f in src], 0.02)
+    for f in src:
         p = f["properties"]
-        g = clockwise(shape(f["geometry"]).simplify(0.02).buffer(0))
-        if g.is_empty:
-            continue
         a3 = p["ADM0_A3"]
-        if a3 == "ATA":  # Antarctica is left off the map
+        g = country_shape.get(a3)
+        if g is None or g.is_empty:
             continue
+        g = clockwise(g)
         feats.append({"type": "Feature", "id": a3, "properties": {"a3": a3, "name": p["NAME"], "name_es": p.get("NAME_ES") or p["NAME"], "name_local": p.get("NAME_" + (p.get("ISO_A2") or "").upper(), None) or p["NAME"]}, "geometry": geom(g, 3)})
     print("countries", write("data/world/countries.json", {"type": "FeatureCollection", "features": feats}) // 1024, "KB")
 
@@ -153,10 +201,23 @@ def main():
             p = f["properties"]
             key = (p.get("region") if use_region else None) or p.get("name") or "?"
             groups.setdefault(key, []).append(shape(f["geometry"]).buffer(0))
-        out = []
-        for name, gs in groups.items():
-            g = clockwise(unary_union(gs).simplify(0.004).buffer(0))
-            if g.is_empty:
+        # regions are simplified together (shared borders stay one line) and trimmed to the
+        # country's own shape on the world map, so the country's border is the only outside line
+        region_shape, inner = faces([(name, unary_union(gs).buffer(0)) for name, gs in groups.items()], 0.004)
+        land = country_shape.get(a3)
+        out, islands = [], []
+        for name in groups:
+            g = region_shape.get(name)
+            if g is None:
+                continue
+            if land is not None:
+                # islands too small for the world map are kept, with their own coast line
+                parts = list(g.geoms) if g.geom_type == "MultiPolygon" else [g]
+                apart = [p for p in parts if p.distance(land) > 0.01]
+                islands += apart
+                g = unary_union([only(g.intersection(land), "Polygon")] + apart)
+            g = clockwise(g.buffer(0)) if not g.is_empty else g
+            if g.is_empty or g.geom_type not in ("Polygon", "MultiPolygon"):
                 continue
             out.append({"type": "Feature", "id": a3 + "-" + slug(name), "properties": {"id": a3 + "-" + slug(name), "name": name, "country": a3}, "geometry": geom(g, 4)})
         if not out:
@@ -170,9 +231,17 @@ def main():
         bs = [p.bounds for p in parts if p.area >= biggest * 0.05]
         b = (min(x[0] for x in bs), min(x[1] for x in bs), max(x[2] for x in bs), max(x[3] for x in bs))
         index[a3] = [round(v, 3) for v in b]
-        # the country's own detailed outline, drawn as a solid pen line around the dashed region borders
-        outline = unary_union([shape(f["geometry"]).buffer(0) for f in fs]).buffer(0).simplify(0.004).boundary
-        total += write("data/admin1/%s.json" % a3, {"type": "FeatureCollection", "country": a3, "outline": geom(outline, 4), "features": out})
+        # the borders between regions, each drawn once as a light dashed line inside the country
+        borders = unary_union(inner)
+        if land is not None:
+            borders = only(borders.intersection(land.buffer(-0.002)), "LineString")
+        borders = linemerge(borders) if borders.geom_type == "MultiLineString" else borders
+        doc = {"type": "FeatureCollection", "country": a3, "features": out}
+        if islands:
+            doc["coast"] = geom(unary_union(islands).boundary, 4)
+        if not borders.is_empty and borders.geom_type in ("LineString", "MultiLineString"):
+            doc["borders"] = geom(borders, 4)
+        total += write("data/admin1/%s.json" % a3, doc)
     write("data/admin1/index.json", index)
     print("admin1", len(index), "countries,", total // 1024, "KB total")
 

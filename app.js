@@ -261,12 +261,10 @@
       const a3 = f.properties.a3;
       const d = path(f);
       if (!d) return;
-      const covered = !!state.admin1[a3];
-      el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false) + (covered ? " hidden-by-regions" : ""), "data-country": a3 }, fills);
-      const fc = state.admin1[a3];
-      const od = fc && fc.outline ? path(fc.outline) : d;
-      el("path", Object.assign({ d: od, class: "country-line" }, ns), linesA);
-      el("path", Object.assign({ d: od, class: "country-line b" }, ns), linesB);
+      el("path", { d, class: areaClass("area country", a3, state.dataCountries.has(a3), false), "data-country": a3 }, fills);
+      // countries are simplified together, so a border shared by two neighbours is the very same
+      // line in both and the two strokes land exactly on top of each other: one pen line
+      el("path", Object.assign({ d, class: "country-line" }, ns), linesA);
     });
 
     Object.values(state.admin1).forEach((fc) => {
@@ -275,8 +273,11 @@
         const d = path(f);
         if (!d) return;
         el("path", { d, class: areaClass("area region", id, state.dataRegions.has(id), id === state.focusRegion), "data-region": id, "data-country": f.properties.country }, fills);
-        el("path", Object.assign({ d, class: "region-line" }, ns), linesB);
       });
+      // the borders between regions, each drawn once, light and dashed; islands too small for the
+      // world map get their coast from here
+      if (fc.borders) el("path", Object.assign({ d: path(fc.borders), class: "region-line" }, ns), linesB);
+      if (fc.coast) el("path", Object.assign({ d: path(fc.coast), class: "country-line" }, ns), linesA);
     });
 
     state.lakes.features.forEach((f) => {
@@ -303,7 +304,6 @@
     if (focus) {
       const d = path(focus);
       el("path", Object.assign({ d, class: "focus-line" }, ns), linesA);
-      el("path", Object.assign({ d, class: "focus-line b" }, ns), linesB);
     }
     applyTransform();
   }
@@ -986,9 +986,13 @@
       const spot = el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
       const body = drawBody(it, grp);
       // name tag, shown on hover, keyboard focus or selection (CSS); flips left near the right edge
-      // with a place selected, every other place's tag also says how long the whole trip there takes
-      const trip = tripTo && state.selectedId !== p.id && tripTo.get(p.id);
-      const tripText = trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "";
+      // With a place selected, every other place's tag also tells the whole trip there. Inside the
+      // circle the way's label already gives the time (or the distance), so the tag adds the other
+      // one; outside the circle it gives both.
+      const inReach = reachNow && state.selectedId !== p.id && reachNow.get(p.id);
+      const trip = inReach || (tripTo && state.selectedId !== p.id && tripTo.get(p.id));
+      const tripFull = trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "";
+      const tripText = !trip ? "" : !inReach ? tripFull : reachSet.kind === "time" ? trip.km + " " + t("km") : fmtTime(trip.min);
       const nameW = textWidth(p.name, (state.selectedId === p.id ? "700" : "400") + " 12px Kalam, cursive") + 12;
       const tw = trip ? nameW + 22 + textWidth(tripText, "400 12px Kalam, cursive") + 6 : textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
@@ -998,12 +1002,14 @@
       const tagRect = el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
       const tagText = el("text", { x: tx + 6, y: it.y + 4 }, tag);
       tagText.textContent = p.name;
+      let sample = null, timeText = null;
       if (trip) {
         grp.classList.add("has-way", state.mode);
-        el("path", { class: "sample", d: "M" + (tx + nameW) + " " + (it.y + 1) + "q4 -3 8 0t8 -.5" }, tag);
-        el("text", { class: "time", x: tx + nameW + 22, y: it.y + 4 }, tag).textContent = tripText;
+        sample = el("path", { class: "sample", d: "M" + (tx + nameW) + " " + (it.y + 1) + "q4 -3 8 0t8 -.5" }, tag);
+        timeText = el("text", { class: "time", x: tx + nameW + 22, y: it.y + 4 }, tag);
+        timeText.textContent = tripText;
       }
-      grp._tag = { tag, rect: tagRect, text: tagText, tx, y: it.y, tw, right, trip };
+      grp._tag = { tag, rect: tagRect, text: tagText, sample, timeText, tx, y: it.y, tw, nameW, right, trip, tripFull };
       const dx = it.x - it.x0, dy = it.y - it.y0;
       const st = startFrom(p.id, it.x0, it.y0, dx, dy);
       anims.push({ p, grp, body, leader, spot, x0: it.x0, y0: it.y0, w: it.w, h: size, dx, dy,
@@ -1037,9 +1043,18 @@
       const og = [...g.querySelectorAll(".place")].find((n) => n.dataset.id === other.id);
       const T = og && og._tag;
       if (!T || !T.trip) return;
-      const box = { x: T.tx, y: T.y - 10, w: T.tw, h: 20 };
+      // no label on the way, so this tag shows the whole trip, time and distance
+      const w = T.nameW + 22 + textWidth(T.tripFull, "400 12px Kalam, cursive") + 6;
+      const x0 = T.right ? T.tx : T.tx + T.tw - w;
+      const box = { x: x0, y: T.y - 10, w, h: 20 };
       if (hits(box)) return; // no room: the note still lists it
       boxes.push(box);
+      T.rect.setAttribute("x", x0);
+      T.rect.setAttribute("width", w);
+      T.text.setAttribute("x", x0 + 6);
+      T.sample.setAttribute("d", "M" + (x0 + T.nameW) + " " + (T.y + 1) + "q4 -3 8 0t8 -.5");
+      T.timeText.setAttribute("x", x0 + T.nameW + 22);
+      T.timeText.textContent = T.tripFull;
       og.classList.add("linked");
     }
     // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
