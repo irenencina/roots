@@ -54,4 +54,7 @@ these fields by id; the full profile page (opened from the title on the post-it)
 fields a place has. The sign-up form for new places will be built from the same list.
 
 The search box in the side list finds places by name, town, type, offer or description, ignoring
-accents and case. The offer chips under it filter by kind of offer.
+accents and case. Under it, chips filter by what you would like to do (visit, volunteer, learn,
+stay, join, buy local, find a school), by a broad theme, and by a language spoken; these come from
+`search` in `data/profile.json`. Personal details (ages, gender, rules, money) are never filters, on
+purpose: they are only read on the profile page, so nobody picks a community by them.

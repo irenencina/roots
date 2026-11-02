@@ -67,6 +67,7 @@
       search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
       openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
       sampleNote: "Sample details, made up for testing. They are not real information about this place.",
+      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", anyLanguage: "any language",
       offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
       found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
@@ -99,6 +100,7 @@
       search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
       openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
       sampleNote: "Datos de ejemplo, inventados para probar. No es información real sobre este lugar.",
+      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", anyLanguage: "cualquier idioma",
       offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
       found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
@@ -153,7 +155,7 @@
     // value null = just far enough to take in the selected place's direct connections
     reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
-    query: "", offerKind: null, offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
+    query: "", intent: null, theme: null, lang: null, offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
     hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)) || !matchesSearch(p); },
   };
 
@@ -1300,18 +1302,31 @@
     const offers = (p.offers || []).flatMap((o) => { const k = state.offerKindById[o.kind]; return [o.what, k && k.en, k && k.es]; });
     return fold([p.name, p.near, p.description].concat(cats, offers).join(" "));
   }
+  // the chips under the search box: what you would like to do, a broad theme, a language
+  const searchCfg = () => (state.profile && state.profile.search) || { intents: [] };
+  const intentById = (id) => searchCfg().intents.find((x) => x.id === id);
+  function fitsIntent(p, it) {
+    return (it.offers || []).some((k) => (p.offers || []).some((o) => o.kind === k)) ||
+      (it.flags || []).some((f) => p[f] === true) || (it.categories || []).some((c) => p.categories.includes(c));
+  }
+  const themeField = () => { const id = searchCfg().themes; return id && state.profile.sections.flatMap((s) => s.fields).find((f) => f.id === id); };
   function matchesSearch(p) {
-    if (state.offerKind && !(p.offers || []).some((o) => o.kind === state.offerKind)) return false;
+    const it = state.intent && intentById(state.intent);
+    if (it && !fitsIntent(p, it)) return false;
+    if (state.theme && !(p[searchCfg().themes] || []).includes(state.theme)) return false;
+    if (state.lang && !(p[searchCfg().languages] || []).includes(state.lang)) return false;
     const words = fold(state.query).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     const h = p._hay || (p._hay = haystack(p));
     return words.every((w) => h.includes(w));
   }
-  const searching = () => !!(state.query.trim() || state.offerKind);
+  const searching = () => !!(state.query.trim() || state.intent || state.theme || state.lang);
+  const clearSearch = () => { searchEl.value = state.query = ""; state.intent = state.theme = state.lang = null; searchChanged(); };
   // what matched, shown under the name in the list: the offers that fit the search
   function matchHint(p) {
     const words = fold(state.query).split(/\s+/).filter(Boolean);
-    const hits = (p.offers || []).filter((o) => (!state.offerKind || o.kind === state.offerKind) &&
+    const it = state.intent && intentById(state.intent);
+    const hits = (p.offers || []).filter((o) => (!it || !it.offers || it.offers.includes(o.kind)) &&
       (!words.length || words.some((w) => fold(o.what + " " + offerKindLabel(state.offerKindById[o.kind])).includes(w))));
     return hits.map((o) => o.what).join(" · ");
   }
@@ -1321,15 +1336,22 @@
     searchEl.setAttribute("aria-label", t("searchLabel"));
     $("search-clear").setAttribute("aria-label", t("clearSearch"));
     $("search-clear").hidden = !searching();
-    const used = new Set(state.places.flatMap((p) => (p.offers || []).map((o) => o.kind)));
-    const kinds = state.offerKinds.filter((k) => used.has(k.id));
-    chipsEl.hidden = !kinds.length;
-    chipsEl.innerHTML = kinds.length ? '<span class="chips-title">' + t("offersBy") + "</span>" + kinds.map((k) =>
-      '<button type="button" data-kind="' + esc(k.id) + '" aria-pressed="' + (state.offerKind === k.id) + '">' + esc(offerKindLabel(k)) + "</button>").join("") : "";
-    chipsEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-      state.offerKind = state.offerKind === b.dataset.kind ? null : b.dataset.kind;
-      searchChanged();
-    }));
+    // only chips that would find something
+    const located = state.places.filter((p) => p.location);
+    const intents = searchCfg().intents.filter((it) => located.some((p) => fitsIntent(p, it)));
+    const tf = themeField(), themes = tf ? tf.options.filter((o) => located.some((p) => (p[tf.id] || []).includes(o.id))) : [];
+    const langs = [...new Set(located.flatMap((p) => p[searchCfg().languages] || []))].sort();
+    chipsEl.hidden = !intents.length && !themes.length;
+    const chip = (kind, id, label, on, icon) => '<button type="button" data-' + kind + '="' + esc(id) + '" aria-pressed="' + on + '">' + (icon || "") + esc(label) + "</button>";
+    chipsEl.innerHTML =
+      (intents.length ? '<div class="chip-row"><span class="chips-title">' + t("wantTo") + "</span>" + intents.map((it) => chip("intent", it.id, L(it), state.intent === it.id)).join("") + "</div>" : "") +
+      (themes.length ? '<div class="chip-row"><span class="chips-title">' + t("themes") + "</span>" + themes.map((o) => chip("theme", o.id, L(o), state.theme === o.id, art(o.id, "chip-art"))).join("") + "</div>" : "") +
+      (langs.length > 1 ? '<div class="chip-row"><label class="chips-title" for="lang-pick">' + t("speaks") + '</label><select id="lang-pick"><option value="">' + t("anyLanguage") + "</option>" +
+        langs.map((l) => '<option value="' + esc(l) + '"' + (state.lang === l ? " selected" : "") + ">" + esc(l) + "</option>").join("") + "</select></div>" : "");
+    chipsEl.querySelectorAll("[data-intent]").forEach((b) => b.addEventListener("click", () => { state.intent = state.intent === b.dataset.intent ? null : b.dataset.intent; searchChanged(); }));
+    chipsEl.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => { state.theme = state.theme === b.dataset.theme ? null : b.dataset.theme; searchChanged(); }));
+    const lp = chipsEl.querySelector("#lang-pick");
+    if (lp) lp.addEventListener("change", () => { state.lang = lp.value || null; searchChanged(); });
   }
   function searchChanged() {
     renderSearch();
@@ -1342,7 +1364,7 @@
   }
   searchEl.addEventListener("input", () => { state.query = searchEl.value; searchChanged(); });
   searchEl.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape") { searchEl.value = state.query = ""; state.offerKind = null; searchChanged(); }
+    if (ev.key === "Escape") clearSearch();
     if (ev.key === "Enter") {
       // Enter with a single place found goes to it; with several, frames them all
       const found = state.places.filter((p) => p.location && !state.hiddenPlace(p));
@@ -1350,13 +1372,15 @@
       else if (found.length > 1) zoomToPlaces(found.map((p) => p.id));
     }
   });
-  $("search-clear").addEventListener("click", () => { searchEl.value = state.query = ""; state.offerKind = null; searchChanged(); searchEl.focus(); });
+  $("search-clear").addEventListener("click", () => { clearSearch(); searchEl.focus(); });
 
   function renderList() {
     // while searching, the list shows every place that matches, wherever it is
     const here = searching() ? state.places.filter((p) => p.location && matchesSearch(p)) : placesInFocus();
     listTitleEl.hidden = here.length > 0 && !searching();
-    listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, state.query.trim()) : t("foundNone", state.query.trim()))
+    const it = state.intent && intentById(state.intent), tf = state.theme && themeField(), th = tf && tf.options.find((o) => o.id === state.theme);
+    const what = [state.query.trim(), it && L(it), th && L(th), state.lang].filter(Boolean).join(" · ");
+    listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, what) : t("foundNone", what))
       : here.length ? "" : t("noPlacesIn", focusName());
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {

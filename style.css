@@ -113,7 +113,13 @@ body::after {
 .search:focus-within { border-bottom-width: 2.5px; padding-bottom: 3px; }
 .search-clear { border: 0; background: none; font: inherit; font-size: 22px; line-height: 1; color: var(--ink-soft); cursor: pointer; padding: 0 4px; }
 .search-clear:hover { color: var(--ink); }
-.offer-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: -4px; }
+.offer-chips { display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
+.offer-chips[hidden] { display: none; }
+.chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.chip-row .chips-title { flex-basis: 100%; margin-bottom: -2px; }
+.offer-chips .chip-art { width: 16px; height: 16px; margin: 0 3px -3px -3px; stroke-width: 1.6; }
+.offer-chips button[aria-pressed="true"] .chip-art { stroke: var(--page); }
+.offer-chips select { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 12px 14px 12px 13px; padding: 1px 8px; cursor: pointer; }
 .offer-chips .chips-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin-right: 2px; }
 .offer-chips button { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 12px 14px 12px 13px; padding: 1px 10px; cursor: pointer; }
 .offer-chips button:hover { background: var(--land); }

@@ -808,5 +808,78 @@
         }
       ]
     }
-  ]
+  ],
+  "search": {
+    "note": "What people can search by. Only what a place offers, its broad themes and its languages: personal details (ages, gender, rules, money) stay on the profile page and are never filters, so nobody picks a community by them. A place fits an intent when it has one of its offers, says yes to one of its flags, or is one of its types.",
+    "intents": [
+      {
+        "id": "visit",
+        "en": "Visit",
+        "es": "Visitar",
+        "flags": [
+          "open_visitors"
+        ],
+        "offers": [
+          "events"
+        ]
+      },
+      {
+        "id": "volunteer",
+        "en": "Volunteer",
+        "es": "Hacer voluntariado",
+        "flags": [
+          "open_volunteers"
+        ],
+        "offers": [
+          "volunteering"
+        ]
+      },
+      {
+        "id": "learn",
+        "en": "Learn something",
+        "es": "Aprender algo",
+        "offers": [
+          "courses"
+        ]
+      },
+      {
+        "id": "stay",
+        "en": "Stay a while",
+        "es": "Quedarse un tiempo",
+        "offers": [
+          "stays"
+        ]
+      },
+      {
+        "id": "join",
+        "en": "Join",
+        "es": "Unirse",
+        "flags": [
+          "open_members"
+        ]
+      },
+      {
+        "id": "buy",
+        "en": "Buy local",
+        "es": "Comprar local",
+        "offers": [
+          "food",
+          "crafts"
+        ]
+      },
+      {
+        "id": "school",
+        "en": "Find a school",
+        "es": "Buscar una escuela",
+        "offers": [
+          "school"
+        ],
+        "categories": [
+          "school"
+        ]
+      }
+    ],
+    "themes": "purpose",
+    "languages": "languages"
+  }
 }
