@@ -56,7 +56,8 @@
       nearby: (verb) => "Nearby, " + verb, noneNearby: (verb) => "No nearby places to reach " + verb + ".",
       settings: "Settings", language: "Language", showWays: "Show ways up to",
       noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
-      reachWithin: "Reach within", via: (name) => "via " + name, reachNone: "Nothing else within reach.",
+      nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
+      reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
     },
     es: {
       tagline: "Espacios conscientes a nuestro alrededor",
@@ -77,7 +78,8 @@
       nearby: (verb) => "Cerca, " + verb, noneNearby: (verb) => "No hay lugares cercanos " + verb + ".",
       settings: "Ajustes", language: "Idioma", showWays: "Mostrar caminos hasta",
       noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
-      reachWithin: "Alcanzable en", via: (name) => "por " + name, reachNone: "Nada más al alcance.",
+      nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
+      reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
     },
   };
   const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
@@ -125,7 +127,9 @@
     hidden: new Set(),
     placeById: {},
     connections: null,
-    reach: null,           // minutes: show what can be reached from the selected place in that time
+    // how far the reach circle goes, per way of travelling: by time (minutes) or distance (km);
+    // value null = just far enough to take in the selected place's direct connections
+    reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
     hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
   };
@@ -361,13 +365,14 @@
       el("title", {}, grp).textContent = a.name + " – " + b.name + ": " + fmtTime(r.min) + " " + MODES[mode].verb + " (" + r.km + " km)";
     });
   }
-  // Everything reachable from one place within a time, also through other places (Dijkstra over
-  // the connections). Returns id -> { min, prev, e } for each place within reach.
-  function reachFrom(id, mode, limit) {
-    const best = new Map([[id, { min: 0, prev: null, e: null }]]);
+  // Everything reachable from one place within a time or a distance, also through other places
+  // (Dijkstra over the connections). Returns id -> { min, km, prev, e } for each place in reach.
+  function reachFrom(id, mode, kind, limit) {
+    const w = (r) => (kind === "time" ? r.min : r.km);
+    const best = new Map([[id, { min: 0, km: 0, prev: null, e: null }]]);
     const todo = [id], done = new Set();
     while (todo.length) {
-      todo.sort((a, b) => best.get(a).min - best.get(b).min);
+      todo.sort((a, b) => w(best.get(a)) - w(best.get(b)));
       const cur = todo.shift();
       if (done.has(cur)) continue;
       done.add(cur);
@@ -377,17 +382,39 @@
         if (!r) return;
         const other = e.a === cur ? e.b : e.a, p = state.placeById[other];
         if (!p || state.hiddenPlace(p)) return;
-        const m = best.get(cur).min + r.min;
-        if (m > limit) return;
-        if (!best.has(other) || m < best.get(other).min) { best.set(other, { min: m, prev: cur, e }); todo.push(other); }
+        const here = best.get(cur), next = { min: here.min + r.min, km: Math.round((here.km + r.km) * 10) / 10, prev: cur, e };
+        if (w(next) > limit) return;
+        if (!best.has(other) || w(next) < w(best.get(other))) { best.set(other, next); todo.push(other); }
       });
     }
     return best;
   }
-  function currentReach() {
-    if (!state.reach || !state.selectedId || !state.mode || !state.connections) return null;
-    return reachFrom(state.selectedId, state.mode, state.reach);
+  // the default reach: a usual trip for this way of travelling (car 30 min, bike or walk 1 h),
+  // or just far enough for the nearest connection when nothing is that close
+  const REACH_DEFAULT = { car: { time: 30, distance: 25 }, bike: { time: 60, distance: 15 }, foot: { time: 60, distance: 5 } };
+  function defaultReach(id, mode, kind) {
+    const cs = connectionsOf(id, mode), base = REACH_DEFAULT[mode][kind];
+    if (!cs.length) return base;
+    const near = Math.min(...cs.map((c) => (kind === "time" ? c.r.min : c.r.km)));
+    return Math.max(base, kind === "time" ? Math.ceil(near / 5) * 5 : Math.ceil(near));
   }
+  function reachSetting() {
+    if (!state.selectedId || !state.mode || !state.connections) return null;
+    const pref = state.reach[state.mode];
+    return { kind: pref.kind, value: pref.value != null ? pref.value : defaultReach(state.selectedId, state.mode, pref.kind) };
+  }
+  function currentReach() {
+    const r = reachSetting();
+    return r && reachFrom(state.selectedId, state.mode, r.kind, r.value);
+  }
+  // the circle is drawn as the crow flies: big enough that every place in reach sits inside it.
+  // For time, that uses the fastest straight-line speed found among this mode's connections.
+  function crowSpeed(mode) {
+    let v = 0;
+    state.connections.edges.forEach((e) => { const r = e[mode]; if (r && r.min) v = Math.max(v, e.straight_km / r.min); });
+    return v || 0.25;
+  }
+  const fmtReach = (r) => (r.kind === "time" ? fmtTime(r.value) : r.value + " " + t("km"));
 
   function connectionsOf(id, mode) {
     if (!state.connections || !mode) return [];
@@ -486,6 +513,77 @@
     const p = state.selectedId && state.placeById[state.selectedId];
     if (p) showPlace(p); else showWelcome();
     scheduleMarks();
+  }
+
+  // ---------- the reach circle ----------
+  // screen pixels per km around a place, at the current zoom
+  function pxPerKm(p) {
+    const [x, y] = projection(lnglat(p)), [, y2] = projection([p.location.lng, p.location.lat + 1 / 111.2]);
+    return Math.abs(y2 - y) * transform.k;
+  }
+  function reachRadiusKm(r) { return r.kind === "time" ? r.value * crowSpeed(state.mode) : r.value; }
+  let reachDrag = null;
+  function drawReachCircle(g, r, boxes) {
+    const p = state.placeById[state.selectedId];
+    const [cx, cy] = transform.apply(projection(lnglat(p)));
+    const rad = Math.max(14, reachRadiusKm(r) * pxPerKm(p));
+    const grp = el("g", { class: "reach " + state.mode }, null);
+    g.insertBefore(grp, g.firstChild); // under the icons
+    el("circle", { class: "reach-fill", cx, cy, r: rad }, grp);
+    el("circle", { class: "reach-line", cx, cy, r: rad }, grp);
+    const edge = el("circle", { class: "reach-edge", cx, cy, r: rad, tabindex: "0", role: "slider",
+      "aria-label": t("reachHelp"), "aria-valuetext": fmtReach(r) }, grp);
+    // a little knob on the circle, bottom right, shows where to grab it (the whole edge works too)
+    const ka = Math.PI / 4, kx = cx + Math.cos(ka) * rad, ky = cy + Math.sin(ka) * rad;
+    const knob = el("g", { class: "reach-knob" }, g);
+    el("circle", { cx: kx, cy: ky, r: 7 }, knob);
+    el("path", { d: "M" + (kx - 3) + " " + (ky - 3) + "l6 6m-6 -2.5v2.5h2.5m3.5 -6h-2.5m2.5 0v2.5" }, knob);
+    // the value sits on the circle, top right, written like a name tag; tap it to switch time / distance
+    const a = -Math.PI / 4, lx = cx + Math.cos(a) * rad, ly = cy + Math.sin(a) * rad;
+    const label = fmtReach(r), tw = textWidth(label, "700 12px Kalam, cursive") + 46;
+    boxes.push({ x: lx - 4, y: ly - 10, width: tw, w: tw, h: 20 });
+    const tag = el("g", { class: "reach-tag " + state.mode, tabindex: "0", role: "button", "aria-label": label + ". " + t("reachHelp") }, g);
+    el("rect", { x: lx - 4, y: ly - 10, width: tw, height: 20, rx: 3 }, tag);
+    el("path", { class: "sample", d: "M" + lx + " " + (ly + 1) + "q4 -3 8 0t8 -.5" }, tag);
+    el("text", { x: lx + 21, y: ly + 4 }, tag).textContent = label;
+    el("path", { class: "swap", d: "M" + (lx + tw - 13) + " " + (ly - 3) + "h7m-2 -2.5l2 2.5-2 2.5M" + (lx + tw - 6) + " " + (ly + 3) + "h-7m2 -2.5l-2 2.5 2 2.5" }, tag);
+    const toggle = () => {
+      const pref = state.reach[state.mode], cur = reachSetting();
+      // keep roughly the same reach when switching: convert at this mode's straight-line speed
+      const km = reachRadiusKm(cur);
+      pref.kind = pref.kind === "time" ? "distance" : "time";
+      pref.value = pref.kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km));
+      reachChanged();
+    };
+    tag.addEventListener("click", toggle);
+    tag.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+    edge.addEventListener("keydown", (ev) => {
+      const step = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
+      if (!step) return;
+      ev.preventDefault();
+      const cur = reachSetting(), pref = state.reach[state.mode];
+      pref.value = Math.max(cur.kind === "time" ? 5 : 1, cur.value + step * (cur.kind === "time" ? 5 : 1));
+      reachChanged();
+    });
+    d3.selectAll([edge, knob]).call(d3.drag()
+      .on("start", () => { reachDrag = { cx, cy, p }; svg.classList.add("dragging-reach"); })
+      .on("drag", (ev) => {
+        const [mx, my] = d3.pointer(ev.sourceEvent, svg);
+        const km = Math.hypot(mx - reachDrag.cx, my - reachDrag.cy) / pxPerKm(reachDrag.p);
+        const pref = state.reach[state.mode];
+        pref.value = pref.kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km));
+        reachChanged(true);
+      })
+      .on("end", () => { reachDrag = null; svg.classList.remove("dragging-reach"); reachChanged(); }));
+  }
+  let notePending = 0;
+  function reachChanged(dragging) {
+    drawRoutes();
+    scheduleMarks();
+    // the note is rewritten at most a few times a second while dragging
+    clearTimeout(notePending);
+    const p = state.placeById[state.selectedId];
+    if (p) notePending = setTimeout(() => showPlace(p), dragging ? 120 : 0);
   }
 
   // ---------- labels and icons, placed so nothing overlaps ----------
@@ -794,7 +892,7 @@
       boxes.push({ x: G.x - r - 3, y: G.y - r - 3, w: 2 * r + 6, h: 2 * r + 6 });
     });
 
-    const reachNow = currentReach();
+    const reachNow = currentReach(), reachSet = reachSetting();
     // 2. draw the icons. Each one glides from where it was last shown to its new spot, and icons
     //    that join a numbered circle glide into it and fade, so nothing jumps while zooming.
     const prev = anims;
@@ -863,6 +961,9 @@
     prevClusters = clusterPos;
     animate(now);
 
+    // 2a. the reach circle: dashed, around the selected place, drag its edge to reach further
+    if (reachNow && k >= ADMIN_ZOOM) drawReachCircle(g, reachSet, boxes);
+
     if (moving) return; // labels and towns wait until the map stops moving
 
     // the time added to another place's name tag, with a short stroke of the way's line
@@ -873,6 +974,9 @@
       const nameW = textWidth(other.name, "400 12px Kalam, cursive") + 12;
       const w = nameW + 26 + textWidth(label, "400 12px Kalam, cursive") + 6;
       const x0 = T.right ? T.tx : T.tx + T.tw - w;
+      const box = { x: x0, y: T.y - 10, w, h: 20 };
+      if (hits(box)) return; // no room: the note still lists it
+      boxes.push(box);
       T.rect.setAttribute("x", x0);
       T.rect.setAttribute("width", w);
       T.text.setAttribute("x", x0 + 6);
@@ -880,15 +984,13 @@
       el("text", { class: "time", x: x0 + nameW + 22, y: T.y + 4 }, T.tag).textContent = label;
       og.classList.add("linked", state.mode);
     }
-    // 2b. with "reach within" on, every place in reach shows its total time in its name tag
+    // 2b. along each way used to reach places in the circle: that stretch's time (or distance)
     if (reachNow && k >= ADMIN_ZOOM) {
-      reachNow.forEach((info, id) => { if (id !== state.selectedId) tagTime(state.placeById[id], fmtTime(info.min)); });
-    }
-    // otherwise, travel times along the selected place's connections, half way along each way
-    else if (state.selectedId && state.mode && k >= ADMIN_ZOOM) {
-      connectionsOf(state.selectedId, state.mode).forEach((c) => {
+      [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
+        other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
+      })).forEach((c) => {
         const pts = routeCoords(c.e, c.r).map((q) => transform.apply(projection(q)));
-        const label = fmtTime(c.r.min);
+        const label = reachSet.kind === "time" ? fmtTime(c.r.min) : c.r.km + " " + t("km");
         const tw = textWidth(label, "400 12px Kalam, cursive") + 30; // room for a little sample of the line
         // half way along the way, or the nearest free spot along it
         let at = null, bx = null;
@@ -911,7 +1013,8 @@
             }
           }
         }
-        if (!bx) return tagTime(c.other, label); // too short to write on at this zoom
+        // too short to write on at this zoom: the total goes on the place's own name tag
+        if (!bx) return tagTime(c.other, reachSet.kind === "time" ? fmtTime(c.info.min) : c.info.km + " " + t("km"));
         boxes.push(bx);
         // drawn like a place's name tag, with a short stroke of the way's own line in front
         const tg = el("g", { class: "route-time " + state.mode }, g);
@@ -1107,34 +1210,20 @@
       connectionsNote(p);
     noteEl.querySelector(".close").addEventListener("click", () => select(null));
     noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
-    noteEl.querySelectorAll("[data-reach]").forEach((b) => b.addEventListener("click", () => {
-      state.reach = state.reach === +b.dataset.reach ? null : +b.dataset.reach;
-      drawRoutes();
-      scheduleMarks();
-      showPlace(p);
-    }));
   }
 
-  const REACH_STEPS = [30, 60, 120];
   function connectionsNote(p) {
     if (!state.mode || !state.connections) return "";
-    const chips = '<p class="reach-chips"><span>' + t("reachWithin") + "</span> " + REACH_STEPS.map((m) =>
-      '<button type="button" data-reach="' + m + '" aria-pressed="' + (state.reach === m) + '">' + fmtTime(m) + "</button>").join("") + "</p>";
-    const reach = currentReach();
-    if (reach) {
-      const list = [...reach.entries()].filter(([id]) => id !== p.id).sort((a, b) => a[1].min - b[1].min);
-      return '<h3 class="ways-title">' + t("nearby", MODES[state.mode].verb) + "</h3>" + chips +
-        (list.length ? '<ul class="ways">' + list.map(([id, info]) => {
-          const o = state.placeById[id], via = info.prev !== p.id ? state.placeById[info.prev] : null;
-          return '<li><button type="button" data-go="' + esc(id) + '">' + esc(o.name) + "</button>" +
-            (via ? ' <small>' + esc(t("via", via.name)) + "</small>" : "") + " <span>" + fmtTime(info.min) + "</span></li>";
-        }).join("") + "</ul>" : '<p class="ways">' + t("reachNone") + "</p>");
-    }
-    const cs = connectionsOf(p.id, state.mode);
-    if (!cs.length) return '<p class="ways">' + t("noneNearby", MODES[state.mode].verb) + "</p>";
-    return '<h3 class="ways-title">' + t("nearby", MODES[state.mode].verb) + "</h3>" + chips + "<ul class=\"ways\">" + cs.map((c) =>
-      '<li><button type="button" data-go="' + esc(c.other.id) + '">' + esc(c.other.name) + "</button> " +
-      "<span>" + fmtTime(c.r.min) + " · " + c.r.km + " " + t("km") + "</span></li>").join("") + "</ul>";
+    const r = reachSetting(), reach = currentReach();
+    const title = '<h3 class="ways-title">' + t("nearbyTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>";
+    const list = [...reach.entries()].filter(([id]) => id !== p.id).sort((a, b) => a[1].min - b[1].min);
+    if (!list.length) return title + '<p class="ways">' + t("reachNone") + "</p>";
+    return title + '<ul class="ways">' + list.map(([id, info]) => {
+      const o = state.placeById[id], via = info.prev !== p.id ? state.placeById[info.prev] : null;
+      return '<li><span class="who"><button type="button" data-go="' + esc(id) + '">' + esc(o.name) + "</button>" +
+        (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
+        "<span>" + fmtTime(info.min) + " · " + info.km + " " + t("km") + "</span></li>";
+    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>";
   }
 
   function select(id, opts) {
