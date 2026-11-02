@@ -33,6 +33,7 @@
   const NOTE_TONES = ["yellow", "pink", "green"];
   const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
   const RIVER_ZOOM = 12;  // rivers appear when you are close
+  const ROUTE_ZOOM = 30;  // ways between places (and the reach circle) show from about one region across the screen
   const SPREAD_MAX = 6;   // bigger groups always stay a numbered circle
 
   // ---------- words, in English and Spanish ----------
@@ -323,6 +324,8 @@
     layers.linesB.setAttribute("transform", t);
     layers.routes.setAttribute("transform", t);
     if (layers.rivers) layers.rivers.style.display = transform.k >= RIVER_ZOOM ? "" : "none";
+    // zoomed further out the ways would only be a tangle, so they fade away
+    layers.routes.parentNode.classList.toggle("ways-hidden", transform.k < ROUTE_ZOOM);
     scheduleMarks();
   }
 
@@ -704,7 +707,12 @@
     const hits = (b) => boxes.some((o) => b.x < o.x + o.w + pad && b.x + b.w + pad > o.x && b.y < o.y + o.h + pad && b.y + b.h + pad > o.y);
     const inView = (x, y, m) => x > -m && x < W + m && y > -m && y < H + m;
     // keep the heading (top-left) and the note (top-right) clear
-    if (!narrow()) boxes.push({ x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
+    if (!narrow()) {
+      // the note's real size (it grows with the place's details), or a guess before it is drawn
+      const M = svg.getScreenCTM(), nr = noteEl.getBoundingClientRect();
+      boxes.push(M && nr.width && nr.left - M.e < W ? { x: (nr.left - M.e) / M.a - 6, y: 0, w: W, h: (nr.bottom - M.f) / M.d + 6 }
+        : { x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
+    }
     boxes.push({ x: 0, y: 0, w: Math.min(W * 0.55, 440), h: 96 });
     // and the swatch and zoom buttons along the bottom
     if (!panelBoxes) measurePanels();
@@ -1042,7 +1050,7 @@
     animate(now);
 
     // 2a. the reach circle: dashed, around the selected place, drag its edge to reach further
-    if (reachNow && k >= ADMIN_ZOOM) drawReachCircle(g, reachSet, boxes);
+    if (reachNow && k >= ROUTE_ZOOM) drawReachCircle(g, reachSet, boxes);
 
     if (moving) return; // labels and towns wait until the map stops moving
 
@@ -1066,7 +1074,7 @@
       og.classList.add("linked");
     }
     // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
-    if (reachNow && k >= ADMIN_ZOOM) {
+    if (reachNow && k >= ROUTE_ZOOM) {
       [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
         other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
       })).forEach((c) => {

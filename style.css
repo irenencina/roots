@@ -401,6 +401,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .routes.foot .route.lit .route-line { stroke-width: 3.2; }
 .routes .route:hover .route-line { stroke-width: 2.8; }
 #map.moving .routes .route-hit { pointer-events: none; }
+.ways-hidden { opacity: 0; transition: opacity .25s; }
+.ways-hidden .route-hit { pointer-events: none; }
 .route-time rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .route-time .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
 .route-time.car .sample { stroke: var(--way-car); }
