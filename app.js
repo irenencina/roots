@@ -362,7 +362,7 @@
       const grp = el("g", { class: "route" + (lit ? " lit" : "") }, g);
       el("path", Object.assign({ d, class: "route-line" }, ns), grp);
       el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
-      el("title", {}, grp).textContent = a.name + " – " + b.name + ": " + fmtTime(r.min) + " " + MODES[mode].verb + " (" + r.km + " km)";
+      grp.dataset.tip = JSON.stringify([a.name, b.name, fmtTime(r.min), r.km + " " + t("km")]);
     });
   }
   // Everything reachable from one place within a time or a distance, also through other places
@@ -407,13 +407,21 @@
     const r = reachSetting();
     return r && reachFrom(state.selectedId, state.mode, r.kind, r.value);
   }
-  // the circle is drawn as the crow flies: big enough that every place in reach sits inside it.
-  // For time, that uses the fastest straight-line speed found among this mode's connections.
-  function crowSpeed(mode) {
-    let v = 0;
-    state.connections.edges.forEach((e) => { const r = e[mode]; if (r && r.min) v = Math.max(v, e.straight_km / r.min); });
-    return v || 0.25;
+  // The circle is drawn as the crow flies, sized by how this mode's real routes usually go here:
+  // the typical straight-line km covered per minute, and how much longer a route usually is than
+  // the straight line. So places in reach sit near or inside the circle, and its edge is where a
+  // typical trip of that time or distance ends.
+  const median = (xs) => { const v = xs.slice().sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+  const routeStats = {};
+  function statsFor(mode) {
+    if (routeStats[mode]) return routeStats[mode];
+    const es = state.connections.edges.filter((e) => e[mode] && e[mode].min && e.straight_km > 0.5);
+    return (routeStats[mode] = {
+      crowPerMin: median(es.map((e) => e.straight_km / e[mode].min)) || 0.2,
+      detour: median(es.map((e) => e[mode].km / e.straight_km)) || 1.3,
+    });
   }
+  const crowSpeed = (mode) => statsFor(mode).crowPerMin;
   const fmtReach = (r) => (r.kind === "time" ? fmtTime(r.value) : r.value + " " + t("km"));
 
   function connectionsOf(id, mode) {
@@ -515,13 +523,37 @@
     scheduleMarks();
   }
 
+  // ---------- hovering a way: a small tag in the name-tag style, following the pointer ----------
+  const tipEl = document.createElement("div");
+  tipEl.className = "route-tip";
+  tipEl.hidden = true;
+  svg.parentNode.appendChild(tipEl);
+  svg.addEventListener("pointermove", (ev) => {
+    const r = !moving && ev.target.closest && ev.target.closest(".route");
+    if (!r || !r.dataset.tip) { tipEl.hidden = true; return; }
+    const [a, b, time, km] = JSON.parse(r.dataset.tip);
+    tipEl.className = "route-tip " + state.mode;
+    tipEl.innerHTML = '<span class="tip-names"><b>' + esc(a) + "</b> – <b>" + esc(b) + '</b></span><span class="tip-row"><svg viewBox="0 0 30 8" aria-hidden="true" class="swatch ' + state.mode + '"><path d="M1 4.5 Q 8 1.5 15 4 T 29 3.5"/></svg>' + esc(time) + " · " + esc(km) + "</span>";
+    tipEl.hidden = false;
+    const box = svg.parentNode.getBoundingClientRect(), w = tipEl.offsetWidth;
+    let x = ev.clientX - box.left + 14, y = ev.clientY - box.top + 16;
+    if (x + w > box.width - 8) x = ev.clientX - box.left - w - 14;
+    tipEl.style.left = x + "px";
+    tipEl.style.top = y + "px";
+  });
+  svg.addEventListener("pointerleave", () => { tipEl.hidden = true; });
+
   // ---------- the reach circle ----------
   // screen pixels per km around a place, at the current zoom
   function pxPerKm(p) {
     const [x, y] = projection(lnglat(p)), [, y2] = projection([p.location.lng, p.location.lat + 1 / 111.2]);
     return Math.abs(y2 - y) * transform.k;
   }
-  function reachRadiusKm(r) { return r.kind === "time" ? r.value * crowSpeed(state.mode) : r.value; }
+  function reachRadiusKm(r) { return r.kind === "time" ? r.value * crowSpeed(state.mode) : r.value / statsFor(state.mode).detour; }
+  // from a radius on the map back to a time or distance
+  function reachFromRadius(km, kind) {
+    return kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km * statsFor(state.mode).detour));
+  }
   let reachDrag = null;
   function drawReachCircle(g, r, boxes) {
     const p = state.placeById[state.selectedId];
@@ -552,7 +584,7 @@
       // keep roughly the same reach when switching: convert at this mode's straight-line speed
       const km = reachRadiusKm(cur);
       pref.kind = pref.kind === "time" ? "distance" : "time";
-      pref.value = pref.kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km));
+      pref.value = reachFromRadius(km, pref.kind);
       reachChanged();
     };
     tag.addEventListener("click", toggle);
@@ -571,7 +603,7 @@
         const [mx, my] = d3.pointer(ev.sourceEvent, svg);
         const km = Math.hypot(mx - reachDrag.cx, my - reachDrag.cy) / pxPerKm(reachDrag.p);
         const pref = state.reach[state.mode];
-        pref.value = pref.kind === "time" ? Math.max(5, Math.round(km / crowSpeed(state.mode) / 5) * 5) : Math.max(1, Math.round(km));
+        pref.value = reachFromRadius(km, pref.kind);
         reachChanged(true);
       })
       .on("end", () => { reachDrag = null; svg.classList.remove("dragging-reach"); reachChanged(); }));
