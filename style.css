@@ -401,6 +401,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .routes.foot .route.lit .route-line { stroke-width: 3.2; }
 .routes .route:hover .route-line { stroke-width: 2.8; }
 #map.moving .routes .route-hit { pointer-events: none; }
+.ways-hidden { opacity: 0; transition: opacity .25s; }
+.ways-hidden .route-hit { pointer-events: none; }
+/* the way from the selected place to its nearest train station: the same line, a bit lighter */
+.routes .route.to-station .route-line { stroke-width: 2; opacity: .8; }
+
+/* ---------- train stations ---------- */
+.station .icon { fill: var(--page); stroke: var(--ink); stroke-width: 1.5; }
+.station.halt .icon { stroke-width: 1.7; }
+.station .halo { fill: var(--note-yellow); opacity: 0; transition: opacity .15s; }
+.station:hover .halo, .station:focus-visible .halo { opacity: .9; }
+.station .name-tag { display: none; pointer-events: none; }
+.station:hover .name-tag, .station:focus-visible .name-tag, .station.linked .name-tag { display: inline; }
+.station .name-tag .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
+.station .name-tag.car .sample { stroke: var(--way-car); }
+.station .name-tag.bike .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
+.station .name-tag.foot .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
+.note .station-icon { fill: none; stroke: currentColor; stroke-width: 1.6; }
 .route-time rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .route-time .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
 .route-time.car .sample { stroke: var(--way-car); }

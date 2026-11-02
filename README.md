@@ -44,3 +44,11 @@ python3 -m http.server
 ```
 
 Then visit http://localhost:8000.
+
+## Train stations
+
+`data/stations.json` holds the train stations around the places (OpenStreetMap, railway=station
+or halt, without metro and tram) and the way by car, bike and on foot from each place to its three
+nearest ones. It is made by `tools/build_stations.py`, which a GitHub Action
+(`.github/workflows/stations.yml`) runs whenever the places change. Stations show on the map close
+in; a selected place lists its nearest stations and draws the way to the nearest one.

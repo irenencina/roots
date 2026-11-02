@@ -33,6 +33,7 @@
   const NOTE_TONES = ["yellow", "pink", "green"];
   const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
   const RIVER_ZOOM = 12;  // rivers appear when you are close
+  const ROUTE_ZOOM = 30;  // ways between places (and the reach circle) show from about one region across the screen
   const SPREAD_MAX = 6;   // bigger groups always stay a numbered circle
 
   // ---------- words, in English and Spanish ----------
@@ -58,6 +59,7 @@
       noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
       nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
+      stationsTitle: "Train stations", station: "Train station", halt: "Train stop", noStationWay: (verb) => "no way " + verb,
     },
     es: {
       tagline: "Espacios conscientes a nuestro alrededor",
@@ -80,6 +82,7 @@
       noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
       nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
+      stationsTitle: "Estaciones de tren", station: "Estación de tren", halt: "Apeadero", noStationWay: (verb) => "sin camino " + verb,
     },
   };
   const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
@@ -323,6 +326,8 @@
     layers.linesB.setAttribute("transform", t);
     layers.routes.setAttribute("transform", t);
     if (layers.rivers) layers.rivers.style.display = transform.k >= RIVER_ZOOM ? "" : "none";
+    // zoomed further out the ways would only be a tangle, so they fade away
+    layers.routes.parentNode.classList.toggle("ways-hidden", transform.k < ROUTE_ZOOM);
     scheduleMarks();
   }
 
@@ -349,6 +354,20 @@
     const a = state.placeById[e.a], b = state.placeById[e.b];
     return [lnglat(a)].concat(r.path, [lnglat(b)]);
   }
+  // ---------- train stations ----------
+  // a small train seen from the front, drawn with the same pen as the place icons
+  const STATION_ICON = '<rect x="6.5" y="3" width="11" height="13.5" rx="3"/><path d="M6.5 10h11M9 7h6"/><circle cx="9.6" cy="13.3" r=".6"/><circle cx="14.4" cy="13.3" r=".6"/><path d="M9.5 16.5l-2.2 4M14.5 16.5l2.2 4M8.3 19h7.4"/>';
+  const STATION_ZOOM = 150; // stations appear from this zoom on (the selected place's nearest ones earlier)
+  // the stations near a place, nearest first: by the time it takes in the chosen way of travelling
+  // (when there is a way that short), otherwise by straight-line distance
+  function stationsNear(id) {
+    const S = state.stations;
+    if (!S) return [];
+    return S.access.filter((a) => a.place === id && S.byId[a.station]).map((a) => ({
+      s: S.byId[a.station], a, r: state.mode && a[state.mode] && a[state.mode].km <= settings.limit[state.mode] ? a[state.mode] : null,
+    })).sort((x, y) => (x.r && y.r ? x.r.min - y.r.min : x.r ? -1 : y.r ? 1 : x.a.straight_km - y.a.straight_km));
+  }
+
   function drawRoutes() {
     const g = layers.routes;
     if (!g) return;
@@ -372,6 +391,18 @@
       el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
       grp.dataset.tip = JSON.stringify([a.name, b.name, fmtTime(r.min), r.km + " " + t("km")]);
     });
+    // the selected place's way to its nearest train station
+    const sel = state.selectedId && state.placeById[state.selectedId];
+    const near = sel && stationsNear(sel.id)[0];
+    if (near && near.r) {
+      const d = path({ type: "LineString", coordinates: [lnglat(sel)].concat(near.r.path, [[near.s.lng, near.s.lat]]) });
+      if (d) {
+        const grp = el("g", { class: "route lit to-station" }, g);
+        el("path", Object.assign({ d, class: "route-line" }, ns), grp);
+        el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
+        grp.dataset.tip = JSON.stringify([sel.name, near.s.name, fmtTime(near.r.min), near.r.km + " " + t("km")]);
+      }
+    }
   }
   // Everything reachable from one place within a time or a distance, also through other places
   // (Dijkstra over the connections). Returns id -> { min, km, prev, e } for each place in reach.
@@ -704,7 +735,12 @@
     const hits = (b) => boxes.some((o) => b.x < o.x + o.w + pad && b.x + b.w + pad > o.x && b.y < o.y + o.h + pad && b.y + b.h + pad > o.y);
     const inView = (x, y, m) => x > -m && x < W + m && y > -m && y < H + m;
     // keep the heading (top-left) and the note (top-right) clear
-    if (!narrow()) boxes.push({ x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
+    if (!narrow()) {
+      // the note's real size (it grows with the place's details), or a guess before it is drawn
+      const M = svg.getScreenCTM(), nr = noteEl.getBoundingClientRect();
+      boxes.push(M && nr.width && nr.left - M.e < W ? { x: (nr.left - M.e) / M.a - 6, y: 0, w: W, h: (nr.bottom - M.f) / M.d + 6 }
+        : { x: W - Math.min(330, W * 0.36), y: 0, w: W, h: Math.min(170, H * 0.3) });
+    }
     boxes.push({ x: 0, y: 0, w: Math.min(W * 0.55, 440), h: 96 });
     // and the swatch and zoom buttons along the bottom
     if (!panelBoxes) measurePanels();
@@ -1042,7 +1078,7 @@
     animate(now);
 
     // 2a. the reach circle: dashed, around the selected place, drag its edge to reach further
-    if (reachNow && k >= ADMIN_ZOOM) drawReachCircle(g, reachSet, boxes);
+    if (reachNow && k >= ROUTE_ZOOM) drawReachCircle(g, reachSet, boxes);
 
     if (moving) return; // labels and towns wait until the map stops moving
 
@@ -1066,7 +1102,7 @@
       og.classList.add("linked");
     }
     // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
-    if (reachNow && k >= ADMIN_ZOOM) {
+    if (reachNow && k >= ROUTE_ZOOM) {
       [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
         other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
       })).forEach((c) => {
@@ -1148,6 +1184,49 @@
       if (t.capital) el("circle", { class: "dot", cx: x, cy: y, r: 1.4 }, cg);
       el("text", { x: lb.x, y: lb.y + 10 }, cg).textContent = label;
     });
+    // 5. train stations: close in, every station that has room; with a place selected, its
+    //    nearest stations a little earlier, with the trip there written on the nearest one's tag
+    if (state.stations && k >= ADMIN_ZOOM) {
+      const nearSel = state.selectedId ? stationsNear(state.selectedId) : [];
+      const pick = new Map(nearSel.map((n, i) => [n.s.id, { n, first: i === 0 }]));
+      const list = k >= STATION_ZOOM ? state.stations.stations : nearSel.map((n) => n.s);
+      // the selected place's stations first, so they get the room
+      const ordered = list.slice().sort((a, b) => (pick.has(b.id) ? 1 : 0) - (pick.has(a.id) ? 1 : 0));
+      let shown = 0;
+      for (const st of ordered) {
+        if (shown >= 80) break;
+        const [x, y] = transform.apply(projection([st.lng, st.lat]));
+        if (!inView(x, y, -8)) continue;
+        const sz = st.kind === "halt" ? 12 : 14;
+        const box = { x: x - sz / 2 - 1, y: y - sz / 2 - 1, w: sz + 2, h: sz + 2 };
+        if (hits(box)) continue;
+        boxes.push(box);
+        shown++;
+        const chosen = pick.get(st.id);
+        const sg = el("g", { class: "station" + (st.kind === "halt" ? " halt" : "") + (chosen ? " near" : ""), tabindex: "0", role: "img",
+          "aria-label": (st.kind === "halt" ? t("halt") : t("station")) + ": " + st.name }, g);
+        el("circle", { class: "halo", cx: x, cy: y, r: sz / 2 + 4 }, sg);
+        el("g", { class: "icon", transform: "translate(" + (x - sz / 2) + " " + (y - sz / 2) + ") scale(" + sz / 24 + ")" }, sg).innerHTML = STATION_ICON;
+        // its name, like a place's name tag; for the nearest station of the selected place also the trip
+        const trip = chosen && chosen.first && chosen.n.r ? fmtTime(chosen.n.r.min) + " · " + chosen.n.r.km + " " + t("km") : "";
+        const nameW = textWidth(st.name, "400 12px Kalam, cursive") + 12;
+        const tw = trip ? nameW + 22 + textWidth(trip, "400 12px Kalam, cursive") + 6 : nameW;
+        // on the right when there is room, else on the left
+        const txR = x + sz / 2 + 4, txL = x - sz / 2 - 4 - tw;
+        const freeAt = (tx2) => tx2 > 0 && tx2 + tw < W && !hits({ x: tx2, y: y - 10, w: tw, h: 20 });
+        const tx = freeAt(txR) ? txR : freeAt(txL) ? txL : txR + tw < W ? txR : txL;
+        const tag = el("g", { class: "name-tag" + (trip ? " " + state.mode : "") }, sg);
+        el("rect", { x: tx, y: y - 10, width: tw, height: 20, rx: 3 }, tag);
+        el("text", { x: tx + 6, y: y + 4 }, tag).textContent = st.name;
+        if (trip) {
+          el("path", { class: "sample", d: "M" + (tx + nameW) + " " + (y + 1) + "q4 -3 8 0t8 -.5" }, tag);
+          el("text", { class: "time", x: tx + nameW + 22, y: y + 4 }, tag).textContent = trip;
+          const tb = { x: tx, y: y - 10, w: tw, h: 20 };
+          if (!hits(tb)) { boxes.push(tb); sg.classList.add("linked"); }
+        }
+      }
+    }
+
     // the selected place and its name tag sit on top of everything
     const sel = g.querySelector(".place.selected");
     if (sel) g.appendChild(sel);
@@ -1308,7 +1387,21 @@
     noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
   }
 
+  function stationsNote(p) {
+    const near = stationsNear(p.id).slice(0, 3);
+    if (!near.length) return "";
+    const verb = state.mode ? MODES[state.mode].verb : "";
+    return '<h3 class="ways-title">' + t("stationsTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon station-icon" aria-hidden="true">' + STATION_ICON + "</svg></h3>" +
+      '<ul class="ways">' + near.map((n) =>
+        '<li><span class="who">' + esc(n.s.name) + "</span><span>" +
+        (n.r ? fmtTime(n.r.min) + " · " + n.r.km + " " + t("km") : n.a.straight_km + " " + t("km") + (verb ? " · " + esc(t("noStationWay", verb)) : "")) +
+        "</span></li>").join("") + "</ul>";
+  }
+
   function connectionsNote(p) {
+    return waysNote(p) + stationsNote(p);
+  }
+  function waysNote(p) {
     if (!state.mode || !state.connections) return "";
     const r = reachSetting(), reach = currentReach();
     const title = '<h3 class="ways-title">' + t("nearbyTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>";
@@ -1320,6 +1413,12 @@
         (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
         "<span>" + fmtTime(info.min) + " · " + info.km + " " + t("km") + "</span></li>";
     }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>";
+  }
+
+  // rewrite the note of the selected place, e.g. when more data arrives
+  function refreshNote() {
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p) showPlace(p);
   }
 
   function select(id, opts) {
@@ -1351,6 +1450,7 @@
   svg.addEventListener("click", (ev) => {
     const placeEl = ev.target.closest(".place");
     if (placeEl) return select(placeEl.dataset.id);
+    if (ev.target.closest(".station")) return; // a station only shows its name
     const cluster = ev.target.closest(".cluster");
     if (cluster && cluster.dataset.ids) return zoomToPlaces(cluster.dataset.ids.split(" "));
     if (cluster && state.countryById[cluster.dataset.country]) {
@@ -1441,7 +1541,12 @@
     applyStaticText();
     renderModes();
     // the connections are small; draw them as soon as they arrive
-    getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); }).catch(() => {});
+    getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); refreshNote(); }).catch(() => {});
+    getJSON("data/stations.json").then((s) => {
+      s.byId = Object.fromEntries(s.stations.map((x) => [x.id, x]));
+      state.stations = s;
+      drawRoutes(); scheduleMarks(); refreshNote();
+    }).catch(() => {});
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
