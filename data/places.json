@@ -218,19 +218,12 @@
         "mental_health"
       ],
       "ages": {
-        "0-12": 8,
-        "13-17": 9,
-        "18-29": 21,
-        "30-49": 24,
-        "50-64": 25,
-        "65+": 13
+        "children": 2,
+        "young": 2,
+        "adults": 2,
+        "older": 2
       },
-      "gender": {
-        "women": 46,
-        "men": 46,
-        "nonbinary": 8
-      },
-      "spirituality": "Meditation in the morning"
+      "gender": "balanced"
     },
     {
       "id": "terra-amica",
@@ -251,94 +244,75 @@
       "open_questions": "",
       "offers": [
         {
-          "kind": "events",
-          "what": "summer gathering",
-          "confirmed": false
-        },
-        {
-          "kind": "volunteering",
-          "what": "help in the garden in exchange for food and a bed",
-          "confirmed": false
-        },
-        {
-          "kind": "courses",
-          "what": "introduction weekends to community life",
+          "kind": "stays",
+          "what": "guest rooms for short visits",
           "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1978",
+      "stage": "established",
+      "founded": "2019",
       "languages": [
         "Italian",
         "German"
       ],
-      "vision": "To show that a simple, shared life can be joyful and good for the land.",
+      "vision": "A village where people of all ages care for each other and for the soil.",
       "purpose": [
-        "economic",
-        "ecological"
+        "educational",
+        "social"
       ],
       "activities": [
-        "Permaculture",
-        "Meditation",
         "Beekeeping",
-        "Forestry"
+        "Construction"
       ],
       "needs": [
-        "a carpenter",
-        "help with the harvest"
+        "help with the harvest",
+        "new families",
+        "a carpenter"
       ],
-      "members": 29,
-      "residents": 23,
-      "open_members": true,
-      "open_visitors": false,
-      "open_volunteers": true,
+      "members": 16,
+      "residents": 10,
+      "open_members": false,
+      "open_visitors": true,
+      "open_volunteers": false,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
       "decision_authority": "council",
-      "decision_process": "mixed",
+      "decision_process": "consent",
       "governance_structure": "hierarchical",
-      "economic_model": "partial",
-      "social_life": "often",
-      "local_ties": "some",
-      "pets": "none",
+      "economic_model": "independent",
+      "social_life": "sometimes",
+      "local_ties": "strong",
+      "pets": "allowed",
       "substances": "occasions",
       "costs": [
-        "work_exchange",
-        "dues",
-        "own_income"
+        "dues"
       ],
       "vehicles": [
+        "car_free",
         "shared"
       ],
       "food": [
         "vegetarian"
       ],
       "support": [
-        "medical"
+        "childcare",
+        "elder_care"
       ],
       "practices": [
-        "local_politics",
-        "protests",
-        "trainings"
+        "land"
       ],
       "accessibility": [
-        "neurodiverse",
+        "chronic_illness",
         "mental_health",
-        "chronic_illness"
+        "neurodiverse"
       ],
       "ages": {
-        "0-12": 16,
-        "13-17": 9,
-        "18-29": 15,
-        "30-49": 34,
-        "50-64": 12,
-        "65+": 14
+        "children": 0,
+        "young": 1,
+        "adults": 2,
+        "older": 3
       },
-      "gender": {
-        "women": 49,
-        "men": 46,
-        "nonbinary": 5
-      }
+      "gender": "mostly_men"
     },
     {
       "id": "casa-rotta-nuove-rotte",
@@ -354,11 +328,16 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A community of families and single people who share land, a common house and a vegetable garden.",
+      "description": "We live together on 32 hectares of hills and woods, sharing meals, work and decisions.",
       "website": "",
       "contact": "",
       "open_questions": "Nuove Rotte is also listed as a farm.",
       "offers": [
+        {
+          "kind": "volunteering",
+          "what": "help in the garden in exchange for food and a bed",
+          "confirmed": false
+        },
         {
           "kind": "courses",
           "what": "introduction weekends to community life",
@@ -366,75 +345,12 @@
         }
       ],
       "sample": true,
-      "stage": "mature",
-      "founded": "2000",
+      "stage": "young",
+      "founded": "1984",
       "languages": [
         "Italian",
         "German"
-      ],
-      "vision": "To show that a simple, shared life can be joyful and good for the land.",
-      "purpose": [
-        "spiritual"
-      ],
-      "activities": [
-        "Permaculture",
-        "Construction"
-      ],
-      "needs": [
-        "a carpenter",
-        "help with the harvest",
-        "new families"
-      ],
-      "members": 55,
-      "residents": 37,
-      "open_members": true,
-      "open_visitors": true,
-      "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "all",
-      "decision_process": "consensus",
-      "governance_structure": "horizontal",
-      "economic_model": "shared",
-      "social_life": "sometimes",
-      "local_ties": "strong",
-      "pets": "none",
-      "substances": "occasions",
-      "costs": [
-        "own_income",
-        "dues"
-      ],
-      "vehicles": [
-        "own"
-      ],
-      "food": [
-        "own_food",
-        "food_surplus"
-      ],
-      "support": [
-        "childcare",
-        "medical"
-      ],
-      "practices": [
-        "protests"
-      ],
-      "accessibility": [
-        "chronic_illness",
-        "mental_health",
-        "neurodiverse"
-      ],
-      "ages": {
-        "0-12": 18,
-        "13-17": 6,
-        "18-29": 11,
-        "30-49": 32,
-        "50-64": 21,
-        "65+": 12
-      },
-      "gender": {
-        "women": 53,
-        "men": 43,
-        "nonbinary": 4
-      }
+      ]
     },
     {
       "id": "laltrove",
@@ -455,88 +371,36 @@
       "open_questions": "Its school Voli Erranti is a separate entry.",
       "offers": [
         {
-          "kind": "courses",
-          "what": "introduction weekends to community life",
-          "confirmed": false
-        },
-        {
-          "kind": "stays",
-          "what": "guest rooms for short visits",
+          "kind": "events",
+          "what": "summer gathering",
           "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "established",
-      "founded": "1985",
+      "stage": "mature",
+      "founded": "2009",
       "languages": [
         "Italian",
-        "English",
-        "French"
+        "English"
       ],
       "vision": "A village where people of all ages care for each other and for the soil.",
       "purpose": [
-        "ecological",
-        "educational",
-        "spiritual"
+        "spiritual",
+        "educational"
       ],
       "activities": [
-        "Beekeeping",
-        "Permaculture",
-        "Forestry"
+        "Meditation",
+        "Beekeeping"
       ],
       "needs": [
-        "new families",
-        "help with the harvest"
+        "a carpenter"
       ],
-      "members": 17,
-      "residents": 14,
+      "members": 12,
+      "residents": 12,
       "open_members": false,
-      "open_visitors": false,
+      "open_visitors": true,
       "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "founders",
-      "decision_process": "majority",
-      "governance_structure": "circles",
-      "economic_model": "independent",
-      "social_life": "often",
-      "local_ties": "strong",
-      "pets": "allowed",
-      "substances": "occasions",
-      "costs": [
-        "own_income"
-      ],
-      "vehicles": [
-        "car_free"
-      ],
-      "food": [
-        "food_surplus",
-        "shared_meals",
-        "vegetarian"
-      ],
-      "support": [
-        "childcare",
-        "medical",
-        "elder_care"
-      ],
-      "practices": [
-        "local_politics",
-        "land"
-      ],
-      "accessibility": [
-        "mental_health"
-      ],
-      "ages": {
-        "0-12": 3,
-        "13-17": 4,
-        "18-29": 9,
-        "30-49": 20,
-        "50-64": 43,
-        "65+": 21
-      },
-      "gender": {
-        "women": 54,
-        "men": 46
-      }
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
     },
     {
       "id": "push",
@@ -551,7 +415,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A community of families and single people who share land, a common house and a vegetable garden.",
+      "description": "We live together on 71 hectares of hills and woods, sharing meals, work and decisions.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -563,32 +427,13 @@
         }
       ],
       "sample": true,
-      "stage": "mature",
-      "founded": "2017",
+      "stage": "forming",
+      "founded": "1975",
       "languages": [
         "Italian",
-        "English"
-      ],
-      "vision": "To show that a simple, shared life can be joyful and good for the land.",
-      "purpose": [
-        "educational",
-        "ecological",
-        "spiritual"
-      ],
-      "activities": [
-        "Gardening",
-        "Permaculture"
-      ],
-      "needs": [
-        "a carpenter",
-        "new families"
-      ],
-      "members": 53,
-      "residents": 37,
-      "open_members": true,
-      "open_visitors": true,
-      "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
+        "English",
+        "French"
+      ]
     },
     {
       "id": "alpe-pianello",
@@ -609,6 +454,16 @@
       "open_questions": "",
       "offers": [
         {
+          "kind": "stays",
+          "what": "guest rooms for short visits",
+          "confirmed": false
+        },
+        {
+          "kind": "events",
+          "what": "summer gathering",
+          "confirmed": false
+        },
+        {
           "kind": "courses",
           "what": "introduction weekends to community life",
           "confirmed": false
@@ -620,30 +475,72 @@
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "2022",
+      "stage": "young",
+      "founded": "2015",
       "languages": [
         "Italian",
-        "German"
+        "English",
+        "French"
       ],
-      "vision": "To show that a simple, shared life can be joyful and good for the land.",
+      "vision": "A village where people of all ages care for each other and for the soil.",
       "purpose": [
-        "ecological",
-        "cultural"
+        "economic",
+        "social"
       ],
       "activities": [
-        "Gardening",
-        "Beekeeping"
+        "Permaculture",
+        "Construction"
       ],
       "needs": [
-        "new families"
+        "new families",
+        "help with the harvest",
+        "a carpenter"
       ],
-      "members": 38,
-      "residents": 19,
-      "open_members": false,
-      "open_visitors": true,
+      "members": 25,
+      "residents": 17,
+      "open_members": true,
+      "open_visitors": false,
       "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "all",
+      "decision_process": "consensus",
+      "governance_structure": "hierarchical",
+      "economic_model": "partial",
+      "social_life": "private",
+      "local_ties": "strong",
+      "pets": "none",
+      "substances": "occasions",
+      "costs": [
+        "own_income",
+        "entry_fee",
+        "dues"
+      ],
+      "vehicles": [
+        "car_sharing"
+      ],
+      "food": [
+        "vegetarian",
+        "food_surplus",
+        "shared_meals"
+      ],
+      "support": [
+        "elder_care",
+        "medical"
+      ],
+      "practices": [
+        "trainings"
+      ],
+      "accessibility": [
+        "chronic_illness",
+        "mental_health"
+      ],
+      "ages": {
+        "children": 3,
+        "young": 1,
+        "adults": 3,
+        "older": 1
+      },
+      "gender": "balanced"
     },
     {
       "id": "monte-venere",
@@ -658,7 +555,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "We live together on 34 hectares of hills and woods, sharing meals, work and decisions.",
+      "description": "A community of families and single people who share land, a common house and a vegetable garden.",
       "website": "",
       "contact": "",
       "open_questions": "Drawn with the single-house icon on the map, listed under intentional communities in the legend.",
@@ -667,83 +564,88 @@
           "kind": "stays",
           "what": "guest rooms for short visits",
           "confirmed": false
+        },
+        {
+          "kind": "events",
+          "what": "summer gathering",
+          "confirmed": false
+        },
+        {
+          "kind": "volunteering",
+          "what": "help in the garden in exchange for food and a bed",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "2010",
+      "stage": "young",
+      "founded": "2019",
       "languages": [
         "Italian",
         "English",
         "French"
       ],
-      "vision": "A village where people of all ages care for each other and for the soil.",
+      "vision": "To show that a simple, shared life can be joyful and good for the land.",
       "purpose": [
-        "social",
-        "educational",
-        "spiritual"
+        "ecological",
+        "economic"
       ],
       "activities": [
-        "Forestry",
-        "Beekeeping",
-        "Gardening"
+        "Meditation",
+        "Forestry"
       ],
       "needs": [
+        "a carpenter",
         "new families",
-        "help with the harvest",
-        "a carpenter"
+        "help with the harvest"
       ],
-      "members": 45,
-      "residents": 29,
-      "open_members": false,
+      "members": 42,
+      "residents": 22,
+      "open_members": true,
       "open_visitors": true,
       "open_volunteers": false,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "council",
+      "decision_authority": "founders",
       "decision_process": "consent",
       "governance_structure": "circles",
       "economic_model": "independent",
       "social_life": "sometimes",
-      "local_ties": "strong",
+      "local_ties": "few",
       "pets": "some",
-      "substances": "occasions",
+      "substances": "free",
       "costs": [
-        "entry_fee",
+        "work_exchange",
+        "dues",
         "own_income"
       ],
       "vehicles": [
+        "own",
+        "car_sharing",
         "car_free"
       ],
       "food": [
         "vegetarian"
       ],
       "support": [
-        "childcare",
-        "medical",
-        "elder_care"
+        "medical"
       ],
       "practices": [
-        "social_justice",
+        "land",
         "local_politics",
-        "land"
+        "social_justice"
       ],
       "accessibility": [
-        "mental_health"
+        "mental_health",
+        "chronic_illness",
+        "neurodiverse"
       ],
       "ages": {
-        "0-12": 5,
-        "13-17": 1,
-        "18-29": 56,
-        "30-49": 24,
-        "50-64": 11,
-        "65+": 3
+        "children": 1,
+        "young": 3,
+        "adults": 2,
+        "older": 0
       },
-      "gender": {
-        "women": 49,
-        "men": 46,
-        "nonbinary": 5
-      },
-      "spirituality": "No shared practice"
+      "gender": "balanced",
+      "spirituality": "Seasonal celebrations"
     },
     {
       "id": "casa-delle-querce",
@@ -758,7 +660,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A community of families and single people who share land, a common house and a vegetable garden.",
+      "description": "We live together on 30 hectares of hills and woods, sharing meals, work and decisions.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -772,84 +674,16 @@
           "kind": "events",
           "what": "summer gathering",
           "confirmed": false
-        },
-        {
-          "kind": "courses",
-          "what": "introduction weekends to community life",
-          "confirmed": false
-        },
-        {
-          "kind": "stays",
-          "what": "guest rooms for short visits",
-          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1996",
+      "stage": "young",
+      "founded": "2002",
       "languages": [
-        "Italian"
-      ],
-      "vision": "To show that a simple, shared life can be joyful and good for the land.",
-      "purpose": [
-        "social"
-      ],
-      "activities": [
-        "Construction",
-        "Beekeeping"
-      ],
-      "needs": [
-        "a carpenter"
-      ],
-      "members": 17,
-      "residents": 13,
-      "open_members": false,
-      "open_visitors": false,
-      "open_volunteers": false,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "founders",
-      "decision_process": "majority",
-      "governance_structure": "circles",
-      "economic_model": "independent",
-      "social_life": "private",
-      "local_ties": "few",
-      "pets": "none",
-      "substances": "occasions",
-      "costs": [
-        "own_income",
-        "entry_fee",
-        "dues"
-      ],
-      "vehicles": [
-        "shared"
-      ],
-      "food": [
-        "shared_meals",
-        "vegan"
-      ],
-      "support": [
-        "elder_care"
-      ],
-      "practices": [
-        "social_justice"
-      ],
-      "accessibility": [
-        "neurodiverse"
-      ],
-      "ages": {
-        "0-12": 15,
-        "13-17": 5,
-        "18-29": 7,
-        "30-49": 47,
-        "50-64": 13,
-        "65+": 13
-      },
-      "gender": {
-        "women": 41,
-        "men": 53,
-        "nonbinary": 6
-      },
-      "spirituality": "Meditation in the morning"
+        "Italian",
+        "English",
+        "French"
+      ]
     },
     {
       "id": "villaggio-verde",
@@ -883,15 +717,79 @@
           "kind": "stays",
           "what": "guest rooms for short visits",
           "confirmed": false
+        },
+        {
+          "kind": "courses",
+          "what": "introduction weekends to community life",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "young",
-      "founded": "1987",
+      "stage": "established",
+      "founded": "2009",
       "languages": [
         "Italian",
-        "English"
-      ]
+        "English",
+        "French"
+      ],
+      "vision": "To show that a simple, shared life can be joyful and good for the land.",
+      "purpose": [
+        "ecological",
+        "cultural"
+      ],
+      "activities": [
+        "Gardening",
+        "Beekeeping"
+      ],
+      "needs": [
+        "new families"
+      ],
+      "members": 27,
+      "residents": 18,
+      "open_members": false,
+      "open_visitors": true,
+      "open_volunteers": true,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "founders",
+      "decision_process": "mixed",
+      "governance_structure": "horizontal",
+      "economic_model": "shared",
+      "social_life": "often",
+      "local_ties": "strong",
+      "pets": "allowed",
+      "substances": "occasions",
+      "costs": [
+        "entry_fee"
+      ],
+      "vehicles": [
+        "car_free",
+        "car_sharing",
+        "own"
+      ],
+      "food": [
+        "own_food"
+      ],
+      "support": [
+        "elder_care",
+        "medical"
+      ],
+      "practices": [
+        "social_justice",
+        "land",
+        "trainings"
+      ],
+      "accessibility": [
+        "mental_health",
+        "chronic_illness",
+        "mobility"
+      ],
+      "ages": {
+        "children": 0,
+        "young": 1,
+        "adults": 2,
+        "older": 3
+      },
+      "gender": "balanced"
     },
     {
       "id": "montesole",
@@ -906,7 +804,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "6 households in one renovated building, with a shared kitchen, laundry and guest room.",
+      "description": "A cohousing in the city: private flats, a big common room and a garden on the roof.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -924,76 +822,72 @@
       ],
       "sample": true,
       "stage": "forming",
-      "founded": "1991",
+      "founded": "2000",
       "languages": [
         "Italian",
         "English"
       ],
-      "vision": "Living close to neighbours you chose, sharing what makes sense to share.",
+      "vision": "Affordable homes kept away from speculation.",
       "purpose": [
-        "educational",
-        "spiritual",
-        "cultural"
+        "ecological"
       ],
       "activities": [
-        "Repair café",
         "Urban gardening",
+        "Property management",
         "Shared kitchen",
-        "Property management"
+        "Repair café"
       ],
       "needs": [
+        "a family with children",
         "someone who knows plumbing"
       ],
-      "members": 16,
-      "residents": 13,
+      "members": 12,
+      "residents": 9,
       "open_members": false,
       "open_visitors": true,
       "open_volunteers": false,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "council",
-      "decision_process": "majority",
-      "governance_structure": "horizontal",
-      "economic_model": "independent",
-      "social_life": "often",
-      "local_ties": "strong",
-      "pets": "none",
-      "substances": "none",
+      "decision_authority": "all",
+      "decision_process": "consent",
+      "governance_structure": "hierarchical",
+      "economic_model": "partial",
+      "social_life": "private",
+      "local_ties": "some",
+      "pets": "some",
+      "substances": "occasions",
       "costs": [
-        "work_exchange",
-        "entry_fee"
+        "own_income"
       ],
       "vehicles": [
-        "own"
+        "own",
+        "car_sharing"
       ],
       "food": [
-        "own_food",
-        "vegan",
-        "food_surplus"
+        "shared_meals",
+        "vegan"
       ],
       "support": [
-        "elder_care"
+        "childcare",
+        "elder_care",
+        "medical"
       ],
       "practices": [
-        "protests",
-        "land"
+        "social_justice",
+        "trainings"
       ],
       "accessibility": [
-        "neurodiverse"
+        "mobility",
+        "mental_health",
+        "chronic_illness"
       ],
       "ages": {
-        "0-12": 5,
-        "13-17": 2,
-        "18-29": 9,
-        "30-49": 26,
-        "50-64": 35,
-        "65+": 23
+        "children": 3,
+        "young": 1,
+        "adults": 3,
+        "older": 1
       },
-      "gender": {
-        "women": 52,
-        "men": 45,
-        "nonbinary": 3
-      },
-      "spirituality": "No shared practice"
+      "gender": "balanced",
+      "spirituality": "Meditation in the morning"
     },
     {
       "id": "andirivieni",
@@ -1008,11 +902,16 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "10 households in one renovated building, with a shared kitchen, laundry and guest room.",
+      "description": "A cohousing in the city: private flats, a big common room and a garden on the roof.",
       "website": "",
       "contact": "",
       "open_questions": "",
       "offers": [
+        {
+          "kind": "events",
+          "what": "monthly open dinner",
+          "confirmed": false
+        },
         {
           "kind": "crafts",
           "what": "repair café on Saturdays",
@@ -1021,30 +920,68 @@
       ],
       "sample": true,
       "stage": "young",
-      "founded": "2007",
+      "founded": "2002",
       "languages": [
-        "Italian"
+        "Italian",
+        "German"
       ],
       "vision": "Living close to neighbours you chose, sharing what makes sense to share.",
       "purpose": [
-        "social",
-        "economic"
+        "ecological",
+        "spiritual",
+        "social"
       ],
       "activities": [
-        "Shared kitchen",
         "Property management",
-        "Urban gardening"
+        "Urban gardening",
+        "Repair café"
       ],
       "needs": [
-        "someone who knows plumbing",
-        "a family with children"
+        "a family with children",
+        "someone who knows plumbing"
       ],
-      "members": 24,
-      "residents": 22,
+      "members": 13,
+      "residents": 13,
       "open_members": true,
       "open_visitors": true,
       "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "founders",
+      "decision_process": "mixed",
+      "governance_structure": "circles",
+      "economic_model": "shared",
+      "social_life": "often",
+      "local_ties": "strong",
+      "pets": "none",
+      "substances": "none",
+      "costs": [
+        "entry_fee"
+      ],
+      "vehicles": [
+        "car_sharing"
+      ],
+      "food": [
+        "vegetarian"
+      ],
+      "support": [
+        "childcare"
+      ],
+      "practices": [
+        "social_justice",
+        "local_politics",
+        "land"
+      ],
+      "accessibility": [
+        "neurodiverse",
+        "mental_health"
+      ],
+      "ages": {
+        "children": 0,
+        "young": 1,
+        "adults": 2,
+        "older": 3
+      },
+      "gender": "balanced"
     },
     {
       "id": "numero-zero",
@@ -1059,7 +996,7 @@
         "approximate": true
       },
       "on_newest_map": false,
-      "description": "18 households in one renovated building, with a shared kitchen, laundry and guest room.",
+      "description": "13 households in one renovated building, with a shared kitchen, laundry and guest room.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -1067,6 +1004,183 @@
         {
           "kind": "events",
           "what": "monthly open dinner",
+          "confirmed": false
+        },
+        {
+          "kind": "crafts",
+          "what": "repair café on Saturdays",
+          "confirmed": false
+        }
+      ],
+      "sample": true,
+      "stage": "forming",
+      "founded": "2021",
+      "languages": [
+        "Italian",
+        "English"
+      ]
+    },
+    {
+      "id": "casa-germogli",
+      "name": "Casa Germogli",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "south of Cuneo",
+      "location": {
+        "lat": 44.31,
+        "lng": 7.52,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "A small house in the hills where we host people looking for a slower life.",
+      "website": "",
+      "contact": "",
+      "open_questions": "",
+      "offers": [
+        {
+          "kind": "stays",
+          "what": "a room for travellers, by donation",
+          "confirmed": false
+        }
+      ],
+      "sample": true,
+      "stage": "mature",
+      "founded": "2007",
+      "languages": [
+        "Italian",
+        "English",
+        "French"
+      ],
+      "vision": "Small is enough.",
+      "purpose": [
+        "social",
+        "ecological"
+      ],
+      "activities": [
+        "Hosting",
+        "Gardening"
+      ],
+      "needs": [
+        "help to fix the roof"
+      ],
+      "members": 8,
+      "residents": 7,
+      "open_members": true,
+      "open_visitors": true,
+      "open_volunteers": true,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "founders",
+      "decision_process": "majority",
+      "governance_structure": "hierarchical",
+      "economic_model": "independent",
+      "social_life": "private",
+      "local_ties": "some",
+      "pets": "allowed",
+      "substances": "occasions",
+      "costs": [
+        "dues"
+      ],
+      "vehicles": [
+        "car_free",
+        "own"
+      ],
+      "food": [
+        "vegan",
+        "food_surplus"
+      ],
+      "support": [
+        "childcare",
+        "medical",
+        "elder_care"
+      ],
+      "practices": [
+        "local_politics",
+        "social_justice"
+      ],
+      "accessibility": [
+        "mobility"
+      ],
+      "ages": {
+        "children": 0,
+        "young": 1,
+        "adults": 2,
+        "older": 3
+      },
+      "gender": "mostly_men",
+      "spirituality": "No shared practice"
+    },
+    {
+      "id": "collina-di-levice",
+      "name": "La Collina di Levice",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "Levice, Alta Langa",
+      "location": {
+        "lat": 44.54,
+        "lng": 8.16,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "An old farmhouse shared by a few friends, open to travellers who share our values.",
+      "website": "",
+      "contact": "",
+      "open_questions": "",
+      "offers": [
+        {
+          "kind": "food",
+          "what": "jam and honey",
+          "confirmed": false
+        }
+      ],
+      "sample": true,
+      "stage": "young",
+      "founded": "2007",
+      "languages": [
+        "Italian"
+      ],
+      "vision": "A door that is always open.",
+      "purpose": [
+        "social",
+        "economic"
+      ],
+      "activities": [
+        "Cooking",
+        "Hosting",
+        "Gardening"
+      ],
+      "needs": [
+        "help to fix the roof"
+      ],
+      "members": 7,
+      "residents": 4,
+      "open_members": true,
+      "open_visitors": true,
+      "open_volunteers": false,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
+    },
+    {
+      "id": "bosconauti",
+      "name": "Bosconauti",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "southeast of Tortona",
+      "location": {
+        "lat": 44.75,
+        "lng": 9.02,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "An old farmhouse shared by a few friends, open to travellers who share our values.",
+      "website": "",
+      "contact": "",
+      "open_questions": "On the earlier map this spot was Casa Marlene.",
+      "offers": [
+        {
+          "kind": "stays",
+          "what": "a room for travellers, by donation",
           "confirmed": false
         }
       ],
@@ -1077,20 +1191,20 @@
         "Italian",
         "English"
       ],
-      "vision": "Living close to neighbours you chose, sharing what makes sense to share.",
+      "vision": "A door that is always open.",
       "purpose": [
         "educational"
       ],
       "activities": [
-        "Property management",
-        "Shared kitchen",
-        "Urban gardening"
+        "Hosting",
+        "Cooking",
+        "Gardening"
       ],
       "needs": [
-        "a family with children"
+        "help to fix the roof"
       ],
-      "members": 30,
-      "residents": 23,
+      "members": 3,
+      "residents": 3,
       "open_members": true,
       "open_visitors": true,
       "open_volunteers": false,
@@ -1127,206 +1241,12 @@
         "chronic_illness"
       ],
       "ages": {
-        "0-12": 5,
-        "13-17": 5,
-        "18-29": 8,
-        "30-49": 28,
-        "50-64": 28,
-        "65+": 26
+        "children": 0,
+        "young": 1,
+        "adults": 2,
+        "older": 3
       },
-      "gender": {
-        "women": 68,
-        "men": 30,
-        "nonbinary": 2
-      }
-    },
-    {
-      "id": "casa-germogli",
-      "name": "Casa Germogli",
-      "categories": [
-        "friendly-house"
-      ],
-      "near": "south of Cuneo",
-      "location": {
-        "lat": 44.31,
-        "lng": 7.52,
-        "approximate": true
-      },
-      "on_newest_map": true,
-      "description": "A small house in the hills where we host people looking for a slower life.",
-      "website": "",
-      "contact": "",
-      "open_questions": "",
-      "offers": [
-        {
-          "kind": "stays",
-          "what": "a room for travellers, by donation",
-          "confirmed": false
-        },
-        {
-          "kind": "food",
-          "what": "jam and honey",
-          "confirmed": false
-        }
-      ],
-      "sample": true,
-      "stage": "mature",
-      "founded": "2004",
-      "languages": [
-        "Italian",
-        "English"
-      ],
-      "vision": "A door that is always open.",
-      "purpose": [
-        "spiritual",
-        "social"
-      ],
-      "activities": [
-        "Music",
-        "Cooking",
-        "Gardening",
-        "Hosting"
-      ],
-      "needs": [
-        "help to fix the roof"
-      ],
-      "members": 8,
-      "residents": 4,
-      "open_members": true,
-      "open_visitors": true,
-      "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "council",
-      "decision_process": "consent",
-      "governance_structure": "hierarchical",
-      "economic_model": "shared",
-      "social_life": "private",
-      "local_ties": "some",
-      "pets": "allowed",
-      "substances": "none",
-      "costs": [
-        "dues",
-        "work_exchange"
-      ],
-      "vehicles": [
-        "car_free",
-        "own"
-      ],
-      "food": [
-        "shared_meals"
-      ],
-      "support": [
-        "elder_care",
-        "childcare"
-      ],
-      "practices": [
-        "social_justice",
-        "local_politics"
-      ],
-      "accessibility": [
-        "chronic_illness",
-        "neurodiverse"
-      ],
-      "ages": {
-        "0-12": 3,
-        "13-17": 3,
-        "18-29": 6,
-        "30-49": 17,
-        "50-64": 31,
-        "65+": 40
-      },
-      "gender": {
-        "women": 50,
-        "men": 50
-      },
-      "spirituality": "No shared practice"
-    },
-    {
-      "id": "collina-di-levice",
-      "name": "La Collina di Levice",
-      "categories": [
-        "friendly-house"
-      ],
-      "near": "Levice, Alta Langa",
-      "location": {
-        "lat": 44.54,
-        "lng": 8.16,
-        "approximate": true
-      },
-      "on_newest_map": true,
-      "description": "A small house in the hills where we host people looking for a slower life.",
-      "website": "",
-      "contact": "",
-      "open_questions": "",
-      "offers": [
-        {
-          "kind": "food",
-          "what": "jam and honey",
-          "confirmed": false
-        }
-      ],
-      "sample": true,
-      "stage": "established",
-      "founded": "2002",
-      "languages": [
-        "Italian"
-      ]
-    },
-    {
-      "id": "bosconauti",
-      "name": "Bosconauti",
-      "categories": [
-        "friendly-house"
-      ],
-      "near": "southeast of Tortona",
-      "location": {
-        "lat": 44.75,
-        "lng": 9.02,
-        "approximate": true
-      },
-      "on_newest_map": true,
-      "description": "A small house in the hills where we host people looking for a slower life.",
-      "website": "",
-      "contact": "",
-      "open_questions": "On the earlier map this spot was Casa Marlene.",
-      "offers": [
-        {
-          "kind": "food",
-          "what": "jam and honey",
-          "confirmed": false
-        },
-        {
-          "kind": "stays",
-          "what": "a room for travellers, by donation",
-          "confirmed": false
-        }
-      ],
-      "sample": true,
-      "stage": "young",
-      "founded": "1992",
-      "languages": [
-        "Italian",
-        "English"
-      ],
-      "vision": "Small is enough.",
-      "purpose": [
-        "cultural",
-        "ecological",
-        "social"
-      ],
-      "activities": [
-        "Music",
-        "Cooking"
-      ],
-      "needs": [
-        "help to fix the roof"
-      ],
-      "members": 8,
-      "residents": 5,
-      "open_members": true,
-      "open_visitors": false,
-      "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
+      "gender": "mostly_women"
     },
     {
       "id": "casa-marlene",
@@ -1350,16 +1270,11 @@
           "kind": "stays",
           "what": "a room for travellers, by donation",
           "confirmed": false
-        },
-        {
-          "kind": "food",
-          "what": "jam and honey",
-          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "established",
-      "founded": "1993",
+      "stage": "young",
+      "founded": "1975",
       "languages": [
         "Italian",
         "English",
@@ -1368,68 +1283,58 @@
       "vision": "Small is enough.",
       "purpose": [
         "educational",
-        "spiritual",
-        "social"
+        "cultural"
       ],
       "activities": [
+        "Music",
         "Cooking",
-        "Hosting"
+        "Gardening"
       ],
       "needs": [
         "help to fix the roof"
       ],
-      "members": 6,
-      "residents": 5,
-      "open_members": true,
-      "open_visitors": true,
-      "open_volunteers": false,
+      "members": 8,
+      "residents": 6,
+      "open_members": false,
+      "open_visitors": false,
+      "open_volunteers": true,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
       "decision_authority": "council",
-      "decision_process": "consent",
+      "decision_process": "consensus",
       "governance_structure": "hierarchical",
-      "economic_model": "independent",
-      "social_life": "often",
-      "local_ties": "strong",
+      "economic_model": "partial",
+      "social_life": "sometimes",
+      "local_ties": "some",
       "pets": "allowed",
-      "substances": "occasions",
+      "substances": "free",
       "costs": [
-        "entry_fee",
-        "dues",
-        "work_exchange"
+        "entry_fee"
       ],
       "vehicles": [
-        "car_sharing",
-        "car_free"
+        "car_sharing"
       ],
       "food": [
-        "shared_meals"
+        "vegetarian",
+        "vegan"
       ],
       "support": [
-        "childcare",
-        "elder_care",
-        "medical"
+        "elder_care"
       ],
       "practices": [
-        "trainings",
         "local_politics",
         "land"
       ],
       "accessibility": [
-        "chronic_illness",
+        "mental_health",
         "mobility"
       ],
       "ages": {
-        "0-12": 11,
-        "13-17": 11,
-        "18-29": 12,
-        "30-49": 24,
-        "50-64": 22,
-        "65+": 20
+        "children": 1,
+        "young": 3,
+        "adults": 2,
+        "older": 0
       },
-      "gender": {
-        "women": 36,
-        "men": 64
-      }
+      "gender": "balanced"
     },
     {
       "id": "anima-mundi",
@@ -1450,76 +1355,64 @@
       "open_questions": "",
       "offers": [
         {
-          "kind": "events",
-          "what": "seasonal festivals",
-          "confirmed": false
-        },
-        {
           "kind": "courses",
           "what": "workshops on natural building and herbs",
           "confirmed": false
         },
         {
-          "kind": "volunteering",
-          "what": "volunteers for events",
+          "kind": "events",
+          "what": "seasonal festivals",
           "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1983",
+      "stage": "mature",
+      "founded": "1994",
       "languages": [
         "Italian",
         "German"
       ],
       "vision": "Culture as a way to care for each other and for the places we live in.",
       "purpose": [
-        "spiritual",
-        "educational",
-        "ecological"
+        "economic",
+        "spiritual"
       ],
       "activities": [
         "Markets",
-        "Workshops"
+        "Festivals"
       ],
       "needs": [
-        "volunteers for the summer festival"
+        "a space for workshops"
       ],
-      "members": 70,
+      "members": 102,
       "open_members": true,
       "open_visitors": true,
-      "open_volunteers": true,
+      "open_volunteers": false,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "all",
-      "decision_process": "consent",
-      "governance_structure": "hierarchical",
-      "local_ties": "few",
+      "decision_authority": "founders",
+      "decision_process": "consensus",
+      "governance_structure": "circles",
+      "local_ties": "strong",
       "food": [
         "food_surplus",
-        "vegetarian"
+        "vegan"
       ],
       "practices": [
         "protests",
-        "trainings",
-        "social_justice"
+        "land"
       ],
       "accessibility": [
-        "mental_health",
-        "neurodiverse"
+        "neurodiverse",
+        "chronic_illness",
+        "mobility"
       ],
       "ages": {
-        "0-12": 6,
-        "13-17": 4,
-        "18-29": 7,
-        "30-49": 16,
-        "50-64": 28,
-        "65+": 39
+        "children": 3,
+        "young": 1,
+        "adults": 3,
+        "older": 1
       },
-      "gender": {
-        "women": 63,
-        "men": 32,
-        "nonbinary": 5
-      }
+      "gender": "mostly_men"
     },
     {
       "id": "orsolina-28",
@@ -1544,78 +1437,40 @@
           "kind": "events",
           "what": "seasonal festivals",
           "confirmed": false
+        },
+        {
+          "kind": "volunteering",
+          "what": "volunteers for events",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1991",
+      "stage": "established",
+      "founded": "2006",
       "languages": [
         "Italian",
-        "English",
-        "French"
+        "English"
       ],
       "vision": "Culture as a way to care for each other and for the places we live in.",
       "purpose": [
         "economic",
-        "spiritual",
         "educational"
       ],
       "activities": [
+        "Markets",
         "Education",
-        "Workshops",
-        "Festivals",
-        "Markets"
+        "Festivals"
       ],
       "needs": [
-        "volunteers for the summer festival"
+        "volunteers for the summer festival",
+        "a space for workshops"
       ],
-      "members": 97,
-      "residents": 66,
-      "open_members": false,
+      "members": 111,
+      "residents": 70,
+      "open_members": true,
       "open_visitors": true,
       "open_volunteers": false,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "all",
-      "decision_process": "mixed",
-      "governance_structure": "horizontal",
-      "economic_model": "partial",
-      "social_life": "sometimes",
-      "local_ties": "strong",
-      "pets": "none",
-      "substances": "occasions",
-      "costs": [
-        "dues",
-        "entry_fee",
-        "work_exchange"
-      ],
-      "vehicles": [
-        "own",
-        "car_sharing"
-      ],
-      "food": [
-        "own_food"
-      ],
-      "support": [
-        "medical"
-      ],
-      "practices": [
-        "trainings"
-      ],
-      "accessibility": [
-        "mental_health"
-      ],
-      "ages": {
-        "0-12": 23,
-        "13-17": 6,
-        "18-29": 11,
-        "30-49": 40,
-        "50-64": 13,
-        "65+": 7
-      },
-      "gender": {
-        "women": 63,
-        "men": 37
-      }
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
     },
     {
       "id": "fattoria-rancina",
@@ -1647,12 +1502,33 @@
         }
       ],
       "sample": true,
-      "stage": "established",
-      "founded": "2017",
+      "stage": "mature",
+      "founded": "1996",
       "languages": [
         "Italian",
-        "German"
-      ]
+        "English"
+      ],
+      "vision": "Healthy soil, honest food and fair work.",
+      "purpose": [
+        "social",
+        "economic",
+        "ecological"
+      ],
+      "activities": [
+        "Cheese making",
+        "Winemaking",
+        "Farming"
+      ],
+      "needs": [
+        "people for the grape harvest",
+        "seasonal workers"
+      ],
+      "members": 19,
+      "residents": 11,
+      "open_members": true,
+      "open_visitors": true,
+      "open_volunteers": false,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months."
     },
     {
       "id": "valli-unite",
@@ -1668,11 +1544,16 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A family farm that turned organic and now hosts guests in a few rooms.",
+      "description": "An organic farm growing vegetables, grain and fruit, with animals and a small farm shop.",
       "website": "",
       "contact": "",
       "open_questions": "Drawn with both the tree and the hand icon.",
       "offers": [
+        {
+          "kind": "courses",
+          "what": "bread-making days",
+          "confirmed": false
+        },
         {
           "kind": "volunteering",
           "what": "WWOOF volunteers welcome",
@@ -1684,90 +1565,72 @@
           "confirmed": false
         },
         {
-          "kind": "courses",
-          "what": "bread-making days",
-          "confirmed": false
-        },
-        {
           "kind": "food",
           "what": "vegetables, wine and cheese from the farm",
           "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1997",
+      "stage": "established",
+      "founded": "1983",
       "languages": [
         "Italian",
         "English"
       ],
       "vision": "Healthy soil, honest food and fair work.",
       "purpose": [
-        "spiritual",
-        "ecological",
-        "economic"
+        "ecological"
       ],
       "activities": [
         "Agritourism",
-        "Winemaking",
-        "Permaculture",
-        "Cheese making"
+        "Permaculture"
       ],
       "needs": [
         "seasonal workers",
         "people for the grape harvest"
       ],
-      "members": 6,
-      "residents": 5,
+      "members": 19,
+      "residents": 13,
       "open_members": false,
-      "open_visitors": true,
+      "open_visitors": false,
       "open_volunteers": true,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "all",
+      "decision_authority": "council",
       "decision_process": "mixed",
       "governance_structure": "horizontal",
       "economic_model": "independent",
-      "social_life": "sometimes",
+      "social_life": "often",
       "local_ties": "strong",
-      "pets": "none",
-      "substances": "free",
+      "pets": "allowed",
+      "substances": "none",
       "costs": [
+        "entry_fee",
         "own_income",
-        "dues",
-        "work_exchange"
+        "dues"
       ],
       "vehicles": [
-        "own",
-        "shared"
+        "own"
       ],
       "food": [
-        "vegan",
-        "food_surplus",
         "vegetarian"
       ],
       "support": [
         "elder_care"
       ],
       "practices": [
-        "protests",
-        "trainings",
-        "land"
+        "social_justice"
       ],
       "accessibility": [
-        "mental_health"
+        "chronic_illness"
       ],
       "ages": {
-        "0-12": 18,
-        "13-17": 7,
-        "18-29": 14,
-        "30-49": 22,
-        "50-64": 19,
-        "65+": 20
+        "children": 2,
+        "young": 2,
+        "adults": 2,
+        "older": 2
       },
-      "gender": {
-        "women": 33,
-        "men": 67
-      }
+      "gender": "balanced",
+      "spirituality": "No shared practice"
     },
     {
       "id": "amilu-farm",
@@ -1782,7 +1645,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A family farm that turned organic and now hosts guests in a few rooms.",
+      "description": "An organic farm growing vegetables, grain and fruit, with animals and a small farm shop.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -1793,34 +1656,39 @@
           "confirmed": false
         },
         {
-          "kind": "food",
-          "what": "vegetables, wine and cheese from the farm",
+          "kind": "stays",
+          "what": "agritourism rooms",
+          "confirmed": false
+        },
+        {
+          "kind": "volunteering",
+          "what": "WWOOF volunteers welcome",
           "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "established",
-      "founded": "1995",
+      "stage": "mature",
+      "founded": "1991",
       "languages": [
         "Italian"
       ],
       "vision": "Healthy soil, honest food and fair work.",
       "purpose": [
-        "social",
-        "educational"
+        "cultural",
+        "ecological"
       ],
       "activities": [
+        "Winemaking",
+        "Farming",
         "Permaculture",
-        "Cheese making",
-        "Farming"
+        "Cheese making"
       ],
       "needs": [
-        "seasonal workers",
-        "people for the grape harvest"
+        "seasonal workers"
       ],
-      "members": 8,
-      "residents": 6,
-      "open_members": false,
+      "members": 20,
+      "residents": 17,
+      "open_members": true,
       "open_visitors": true,
       "open_volunteers": true,
       "how_to_join": "Come for a visit weekend first, then a trial period of six months."
@@ -1847,60 +1715,37 @@
           "kind": "courses",
           "what": "training for outdoor teachers",
           "confirmed": false
+        },
+        {
+          "kind": "school",
+          "what": "kindergarten and primary classes outdoors",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "young",
-      "founded": "1989",
+      "stage": "mature",
+      "founded": "1998",
       "languages": [
         "Italian",
-        "English"
+        "English",
+        "French"
       ],
       "vision": "Children who know the names of trees and how to look after each other.",
       "purpose": [
-        "cultural",
         "economic"
       ],
       "activities": [
-        "Nature play",
-        "Parent circles",
-        "Outdoor education"
+        "Outdoor education",
+        "Nature play"
       ],
       "needs": [
-        "an educator",
         "families who want to join"
       ],
-      "members": 32,
+      "members": 18,
       "open_members": true,
       "open_visitors": true,
       "open_volunteers": false,
-      "how_to_join": "Come to an open morning, then a trial week with your child.",
-      "decision_authority": "all",
-      "decision_process": "majority",
-      "governance_structure": "horizontal",
-      "local_ties": "strong",
-      "food": [
-        "own_food"
-      ],
-      "practices": [
-        "protests",
-        "social_justice"
-      ],
-      "accessibility": [
-        "mobility"
-      ],
-      "ages": {
-        "0-12": 61,
-        "13-17": 8,
-        "18-29": 11,
-        "30-49": 16,
-        "50-64": 4
-      },
-      "gender": {
-        "women": 58,
-        "men": 38,
-        "nonbinary": 4
-      }
+      "how_to_join": "Come to an open morning, then a trial week with your child."
     },
     {
       "id": "voli-erranti",
@@ -1915,7 +1760,7 @@
         "approximate": true
       },
       "on_newest_map": true,
-      "description": "A small parent-run school following the rhythm of the seasons.",
+      "description": "An outdoor school where children learn in the forest, every day of the year.",
       "website": "",
       "contact": "",
       "open_questions": "",
@@ -1924,20 +1769,14 @@
           "kind": "school",
           "what": "kindergarten and primary classes outdoors",
           "confirmed": false
-        },
-        {
-          "kind": "courses",
-          "what": "training for outdoor teachers",
-          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "2015",
+      "stage": "mature",
+      "founded": "2014",
       "languages": [
         "Italian",
-        "English",
-        "French"
+        "German"
       ]
     },
     {
@@ -1962,83 +1801,14 @@
           "kind": "stays",
           "what": "a passport and a bed for a night",
           "confirmed": false
-        },
-        {
-          "kind": "events",
-          "what": "national day celebration",
-          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "2013",
+      "stage": "young",
+      "founded": "1976",
       "languages": [
-        "Italian",
-        "English",
-        "French"
-      ],
-      "vision": "Imagination is a form of politics.",
-      "purpose": [
-        "ecological"
-      ],
-      "activities": [
-        "Theatre",
-        "Hosting"
-      ],
-      "needs": [
-        "new citizens"
-      ],
-      "members": 5,
-      "residents": 5,
-      "open_members": false,
-      "open_visitors": true,
-      "open_volunteers": true,
-      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
-      "decision_authority": "founders",
-      "decision_process": "consensus",
-      "governance_structure": "hierarchical",
-      "economic_model": "independent",
-      "social_life": "sometimes",
-      "local_ties": "few",
-      "pets": "some",
-      "substances": "occasions",
-      "costs": [
-        "own_income",
-        "dues"
-      ],
-      "vehicles": [
-        "car_sharing"
-      ],
-      "food": [
-        "food_surplus",
-        "vegan",
-        "vegetarian"
-      ],
-      "support": [
-        "medical",
-        "childcare"
-      ],
-      "practices": [
-        "local_politics",
-        "land",
-        "social_justice"
-      ],
-      "accessibility": [
-        "neurodiverse",
-        "mobility"
-      ],
-      "ages": {
-        "0-12": 16,
-        "13-17": 7,
-        "18-29": 20,
-        "30-49": 20,
-        "50-64": 23,
-        "65+": 14
-      },
-      "gender": {
-        "women": 55,
-        "men": 45
-      }
+        "Italian"
+      ]
     },
     {
       "id": "selva-viva",
@@ -2062,16 +1832,66 @@
           "kind": "volunteering",
           "what": "volunteers for events",
           "confirmed": false
+        },
+        {
+          "kind": "events",
+          "what": "seasonal festivals",
+          "confirmed": false
+        },
+        {
+          "kind": "courses",
+          "what": "workshops on natural building and herbs",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "established",
-      "founded": "2022",
+      "stage": "forming",
+      "founded": "1980",
       "languages": [
         "Italian",
-        "English",
-        "French"
-      ]
+        "English"
+      ],
+      "vision": "Culture as a way to care for each other and for the places we live in.",
+      "purpose": [
+        "educational",
+        "spiritual",
+        "economic"
+      ],
+      "activities": [
+        "Education",
+        "Workshops",
+        "Festivals"
+      ],
+      "needs": [
+        "volunteers for the summer festival"
+      ],
+      "members": 72,
+      "open_members": true,
+      "open_visitors": true,
+      "open_volunteers": false,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "founders",
+      "decision_process": "consent",
+      "governance_structure": "circles",
+      "local_ties": "some",
+      "food": [
+        "own_food",
+        "shared_meals"
+      ],
+      "practices": [
+        "land"
+      ],
+      "accessibility": [
+        "mental_health"
+      ],
+      "ages": {
+        "children": 3,
+        "young": 1,
+        "adults": 3,
+        "older": 1
+      },
+      "gender": "balanced",
+      "spirituality": "Seasonal celebrations"
     },
     {
       "id": "dimensione-fiume",
@@ -2095,15 +1915,76 @@
           "kind": "food",
           "what": "jam and honey",
           "confirmed": false
+        },
+        {
+          "kind": "stays",
+          "what": "a room for travellers, by donation",
+          "confirmed": false
         }
       ],
       "sample": true,
-      "stage": "forming",
-      "founded": "1999",
+      "stage": "established",
+      "founded": "1992",
       "languages": [
         "Italian",
-        "English"
-      ]
+        "English",
+        "French"
+      ],
+      "vision": "A door that is always open.",
+      "purpose": [
+        "ecological"
+      ],
+      "activities": [
+        "Music",
+        "Gardening"
+      ],
+      "needs": [
+        "help to fix the roof"
+      ],
+      "members": 3,
+      "residents": 2,
+      "open_members": false,
+      "open_visitors": false,
+      "open_volunteers": true,
+      "how_to_join": "Come for a visit weekend first, then a trial period of six months.",
+      "decision_authority": "council",
+      "decision_process": "consent",
+      "governance_structure": "horizontal",
+      "economic_model": "shared",
+      "social_life": "sometimes",
+      "local_ties": "few",
+      "pets": "allowed",
+      "substances": "none",
+      "costs": [
+        "own_income"
+      ],
+      "vehicles": [
+        "car_free",
+        "shared"
+      ],
+      "food": [
+        "shared_meals",
+        "vegetarian",
+        "own_food"
+      ],
+      "support": [
+        "medical"
+      ],
+      "practices": [
+        "protests",
+        "trainings"
+      ],
+      "accessibility": [
+        "chronic_illness",
+        "mobility"
+      ],
+      "ages": {
+        "children": 2,
+        "young": 2,
+        "adults": 2,
+        "older": 2
+      },
+      "gender": "balanced"
     }
   ],
   "not_yet_placed": [

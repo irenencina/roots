@@ -13,7 +13,7 @@
     "tags": "a list of free words",
     "offers": "a list of {kind, what, source, confirmed}",
     "media": "a list of {url, caption}",
-    "distribution": "a rough estimate in percent for each band, {band id: percent}; shown only as a picture, never as exact numbers"
+    "levels": "a rough amount for each group, {group id: 0-3} (none, a few, some, many); no exact numbers"
   },
   "sections": [
     {
@@ -672,64 +672,70 @@
       "fields": [
         {
           "id": "ages",
-          "type": "distribution",
-          "estimate": true,
+          "type": "levels",
           "en": "Ages",
           "es": "Edades",
-          "bands": [
+          "groups": [
             {
-              "id": "0-12",
-              "en": "0–12",
-              "es": "0–12"
+              "id": "children",
+              "en": "Children",
+              "es": "Niños"
             },
             {
-              "id": "13-17",
-              "en": "13–17",
-              "es": "13–17"
+              "id": "young",
+              "en": "Young adults",
+              "es": "Jóvenes"
             },
             {
-              "id": "18-29",
-              "en": "18–29",
-              "es": "18–29"
+              "id": "adults",
+              "en": "Adults",
+              "es": "Adultos"
             },
             {
-              "id": "30-49",
-              "en": "30–49",
-              "es": "30–49"
+              "id": "older",
+              "en": "Older people",
+              "es": "Mayores"
+            }
+          ],
+          "levels": [
+            {
+              "en": "none",
+              "es": "ninguno"
             },
             {
-              "id": "50-64",
-              "en": "50–64",
-              "es": "50–64"
+              "en": "a few",
+              "es": "pocos"
             },
             {
-              "id": "65+",
-              "en": "65+",
-              "es": "65+"
+              "en": "some",
+              "es": "algunos"
+            },
+            {
+              "en": "many",
+              "es": "muchos"
             }
           ]
         },
         {
           "id": "gender",
-          "type": "distribution",
-          "estimate": true,
-          "en": "Gender",
-          "es": "Género",
-          "bands": [
+          "type": "choice",
+          "en": "Gender balance",
+          "es": "Equilibrio de género",
+          "options": [
             {
-              "id": "women",
-              "en": "Women",
-              "es": "Mujeres"
+              "id": "mostly_women",
+              "en": "Mostly women",
+              "es": "Sobre todo mujeres"
             },
             {
-              "id": "men",
-              "en": "Men",
-              "es": "Hombres"
+              "id": "balanced",
+              "en": "Balanced",
+              "es": "Equilibrado"
             },
             {
-              "id": "nonbinary",
-              "en": "Non-binary or other",
-              "es": "No binario u otro"
+              "id": "mostly_men",
+              "en": "Mostly men",
+              "es": "Sobre todo hombres"
             }
           ]
         },

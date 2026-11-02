@@ -93,29 +93,20 @@ def options(schema, field):
     raise KeyError(field)
 
 
-def spread(weights, rnd):
-    """Rough percentages from some weights, a little shaken, adding up to 100."""
-    w = {k: max(0, v * rnd.uniform(.6, 1.4)) for k, v in weights.items()}
-    total = sum(w.values()) or 1
-    out = {k: round(v * 100 / total) for k, v in w.items()}
-    out[max(out, key=out.get)] += 100 - sum(out.values())
-    return {k: v for k, v in out.items() if v > 0}
-
-
 def ages(p, rnd):
+    """A rough amount (0 none, 1 a few, 2 some, 3 many) for each age group."""
     if "school" in p["categories"]:  # children, with their teachers
-        return spread({"0-12": 70, "13-17": 5, "18-29": 6, "30-49": 15, "50-64": 4}, rnd)
-    shape = rnd.choice([
-        {"0-12": 20, "13-17": 8, "18-29": 12, "30-49": 35, "50-64": 15, "65+": 10},  # families
-        {"0-12": 4, "13-17": 2, "18-29": 45, "30-49": 35, "50-64": 10, "65+": 4},    # young adults
-        {"0-12": 5, "13-17": 3, "18-29": 7, "30-49": 20, "50-64": 35, "65+": 30},    # older
-        {"0-12": 14, "13-17": 8, "18-29": 18, "30-49": 24, "50-64": 20, "65+": 16},  # all ages
+        return {"children": 3, "young": 1, "adults": 2, "older": 0}
+    return rnd.choice([
+        {"children": 3, "young": 1, "adults": 3, "older": 1},  # families
+        {"children": 1, "young": 3, "adults": 2, "older": 0},  # young adults
+        {"children": 0, "young": 1, "adults": 2, "older": 3},  # older
+        {"children": 2, "young": 2, "adults": 2, "older": 2},  # all ages
     ])
-    return spread(shape, rnd)
 
 
 def gender(rnd):
-    return spread({"women": 50, "men": 45, "nonbinary": rnd.choice([0, 3, 6])}, rnd)
+    return rnd.choice(["balanced", "balanced", "mostly_women", "mostly_men"])
 
 
 def applies(f, p):

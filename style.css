@@ -709,9 +709,9 @@ body.sheet-open { overflow: hidden; }
 .tile.wide { grid-column: 1 / -1; }
 .art { width: 30px; height: 30px; fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .art .fill { fill: var(--ink); }
-ul.art-set { display: flex; flex-wrap: wrap; gap: 8px 6px; margin: 2px 0 0; padding: 0; list-style: none; }
-ul.art-set li { display: flex; flex-direction: column; align-items: center; width: 66px; text-align: center; font-size: 13px; line-height: 1.15; }
-ul.art-set li .art { width: 42px; height: 42px; padding: 5px; margin-bottom: 3px; border-radius: 50%; border: 1.3px dashed transparent; }
+ul.art-set { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 0; padding: 0; list-style: none; }
+ul.art-set li { display: flex; align-items: center; gap: 6px; max-width: 220px; padding-right: 6px; font-size: 14px; line-height: 1.2; }
+ul.art-set li .art { width: 36px; height: 36px; flex: none; padding: 4px; border-radius: 50%; border: 1.3px dashed transparent; }
 ul.art-set li.off { opacity: .3; }
 ul.art-set li.on .art { background: rgba(255, 255, 255, .55); border: 1.5px solid var(--ink); }
 ul.art-set li.on span { font-weight: 700; }
@@ -744,26 +744,14 @@ ul.offer-cards .unconfirmed { display: block; font-size: 12px; color: var(--ink-
 .tile-group { grid-column: 1 / -1; margin: 4px 0 -8px !important; font-size: 15px !important; font-weight: 700; display: flex; align-items: center; gap: 10px; }
 .tile-group::after { content: ""; flex: 1; border-top: 1.2px dashed rgba(27, 26, 23, .35); }
 .tiles > .tile-group:first-child { margin-top: -4px !important; }
-.estimate { display: block; margin-top: 6px; font-size: 12.5px; font-style: italic; color: var(--ink-soft); }
-.age-bars { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 3px 8px; font-size: 13.5px; }
-.age-bars .band { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.age-bars .bar { height: 13px; border-bottom: 1px solid rgba(27, 26, 23, .25); }
-.age-bars .bar i {
-  display: block; height: 100%; min-width: 2px; border: 1.2px solid var(--ink); border-radius: 2px 6px 5px 2px;
-  background: repeating-linear-gradient(-45deg, var(--note-green) 0 3px, rgba(255, 255, 255, .5) 3px 5px);
-}
-.age-bars .pct { min-width: 3.2em; font-size: 12.5px; text-align: right; }
-.ring-chart { display: flex; align-items: center; gap: 14px; }
-.ring-chart svg { width: 92px; height: 92px; flex: none; }
-.ring-chart .slices circle { fill: none; stroke-width: 15; }
-.ring-chart .edge { fill: none; stroke: var(--ink); stroke-width: 1.2; }
-.ring-chart ul { margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; }
-.ring-chart li i { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border: 1px solid var(--ink); border-radius: 3px; vertical-align: -1px; }
-.ring-chart b { font-weight: 400; color: var(--ink-soft); font-size: 13px; }
+.levels { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px 12px; font-size: 15px; }
+.levels .marks { display: flex; gap: 4px; }
+.levels .marks i { width: 22px; height: 11px; border: 1.2px solid var(--ink); border-radius: 2px 6px 4px 3px; opacity: .3; }
+.levels .marks i.on { opacity: 1; background: repeating-linear-gradient(-45deg, var(--note-green) 0 3px, rgba(255, 255, 255, .5) 3px 5px); }
+.levels .word { color: var(--ink-soft); font-size: 14px; }
 @media (max-width: 520px) {
   .tiles { grid-template-columns: 1fr; padding: 12px 12px 14px; }
   .card .peek { display: none; }
-  ul.art-set li { width: 70px; }
 }
 
 /* invented test details: a pink tape strip so they are never taken as real */
