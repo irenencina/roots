@@ -306,17 +306,21 @@
       const [x0, y0] = transform.apply(projection(lnglat(p)));
       if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
     });
+    // Places join a group when they are within `reach` of any member (single linkage). Screen
+    // distances only grow as you zoom in, so groups only ever split, never re-form.
     const reach = size * 1.7;
-    const groups = [];
-    pts.forEach((q) => {
-      if (q.p.id === state.selectedId) { groups.push({ members: [q], x: q.x0, y: q.y0, solo: true }); return; }
-      const G = groups.find((G) => !G.solo && Math.hypot(G.x - q.x0, G.y - q.y0) < reach);
-      if (G) {
-        G.members.push(q);
-        G.x += (q.x0 - G.x) / G.members.length;
-        G.y += (q.y0 - G.y) / G.members.length;
-      } else groups.push({ members: [q], x: q.x0, y: q.y0 });
+    const parent = pts.map((_, i) => i);
+    const root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i])));
+    pts.forEach((a, i) => {
+      if (a.p.id === state.selectedId) return;
+      for (let j = i + 1; j < pts.length; j++) {
+        const b = pts[j];
+        if (b.p.id !== state.selectedId && Math.hypot(a.x0 - b.x0, a.y0 - b.y0) < reach) parent[root(j)] = root(i);
+      }
     });
+    const byRoot = new Map();
+    pts.forEach((q, i) => { const r = root(i); if (!byRoot.has(r)) byRoot.set(r, []); byRoot.get(r).push(q); });
+    const groups = [...byRoot.values()].map((members) => ({ members, x: d3.mean(members, (q) => q.x0), y: d3.mean(members, (q) => q.y0) }));
     groups.sort((a, b) => b.members.length - a.members.length).forEach((G) => {
       const n = G.members.length;
       if (n === 1) return placeIcon(G.members[0], G.members[0].x0, G.members[0].y0, false);
@@ -336,11 +340,19 @@
           const x = G.x + Math.cos(a) * rad, y = G.y + Math.sin(a) * rad;
           return { q: m.q, x, y, box: { x: x - w / 2, y: y - size / 2, w, h: size } };
         });
-        // a fan that would run into something already drawn stays a numbered circle
-        if (!slots.some((s) => hits(s.box))) {
-          slots.forEach((s) => placeIcon(s.q, s.x, s.y, true));
-          return;
+        // once a group has fanned out it stays fanned: if it would run into something already
+        // drawn, it opens a little wider instead of folding back into a circle
+        let grow = 1;
+        while (grow < 1.8 && slots.some((s) => hits(s.box))) {
+          grow += 0.2;
+          slots.forEach((s, i) => {
+            const a = -Math.PI + best + i * step, w = s.box.w;
+            s.x = G.x + Math.cos(a) * rad * grow; s.y = G.y + Math.sin(a) * rad * grow;
+            s.box = { x: s.x - w / 2, y: s.y - size / 2, w, h: size };
+          });
         }
+        slots.forEach((s) => placeIcon(s.q, s.x, s.y, true));
+        return;
       }
       const r = 10 + Math.min(9, Math.sqrt(n) * 2);
       const ids = G.members.map((q) => q.p.id).join(" ");
@@ -358,9 +370,12 @@
         class: "place" + (state.selectedId === p.id ? " selected" : ""),
         tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
       }, g);
-      if (Math.hypot(it.x - it.x0, it.y - it.y0) > 2) {
-        // moved aside to make room: a dot on the real spot and a pen line to the icon
-        el("path", { class: "leader", d: "M" + it.x0 + " " + it.y0 + "L" + it.x + " " + it.y }, grp);
+      // moved aside to make room: a dot on the real spot and a pen line that stops at the icon's edge
+      const dx = it.x - it.x0, dy = it.y - it.y0;
+      const reachEdge = Math.hypot(dx / (it.w / 2), dy / (size * 0.45)); // ellipse hugging the drawing
+      if (reachEdge > 1.15) {
+        const ex = it.x - dx / reachEdge, ey = it.y - dy / reachEdge;
+        el("path", { class: "leader", d: "M" + it.x0 + " " + it.y0 + "L" + ex + " " + ey }, grp);
         el("circle", { class: "spot", cx: it.x0, cy: it.y0, r: 2.4 }, grp);
       }
       el("ellipse", { class: "halo", cx: it.x, cy: it.y, rx: it.w / 2 + 5, ry: size / 2 + 5 }, grp);
