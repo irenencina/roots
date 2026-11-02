@@ -1,0 +1,637 @@
+{
+  "region": "World. Places appear on the map wherever their location is.",
+  "note": "Coordinates are rough guesses from where places are drawn on the paper map, not real addresses.",
+  "categories": [
+    {
+      "id": "intentional-community",
+      "label_it": "Comunità intenzionali",
+      "label_en": "Intentional communities",
+      "icon": "two little houses side by side"
+    },
+    {
+      "id": "cohousing",
+      "label_it": "Cohousing",
+      "label_en": "Cohousing",
+      "icon": "tall narrow house"
+    },
+    {
+      "id": "friendly-house",
+      "label_it": "Case amiche – intenzionali",
+      "label_en": "Friendly intentional houses",
+      "icon": "single small house"
+    },
+    {
+      "id": "association",
+      "label_it": "Associazioni – fondazioni",
+      "label_en": "Associations and foundations",
+      "icon": "open hand"
+    },
+    {
+      "id": "farm",
+      "label_it": "Aziende agricole – agriturismo",
+      "label_en": "Farms and agritourism",
+      "icon": "little tree"
+    },
+    {
+      "id": "school",
+      "label_it": "Asili – scuole",
+      "label_en": "Kindergartens and schools",
+      "icon": "star-shaped figure"
+    },
+    {
+      "id": "micronation",
+      "label_it": "Micronazioni",
+      "label_en": "Micronations",
+      "icon": "flag"
+    },
+    {
+      "id": "producer",
+      "label_it": "Produttori",
+      "label_en": "Producers",
+      "icon": "round basket / dome"
+    }
+  ],
+  "places": [
+    {
+      "id": "damanhur",
+      "name": "Damanhur (Federazione)",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "Valchiusella, near Ivrea",
+      "location": {
+        "lat": 45.43,
+        "lng": 7.76,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "olat",
+      "name": "OLAT",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "west of Ivrea",
+      "location": {
+        "lat": 45.5,
+        "lng": 7.7,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "terra-amica",
+      "name": "Terra Amica",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "near Damanhur, west of Ivrea",
+      "location": {
+        "lat": 45.4,
+        "lng": 7.71,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "casa-rotta-nuove-rotte",
+      "name": "Casa Rotta + Nuove Rotte",
+      "categories": [
+        "intentional-community",
+        "farm"
+      ],
+      "near": "between Cherasco and Alba",
+      "location": {
+        "lat": 44.66,
+        "lng": 7.97,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Nuove Rotte is also listed as a farm."
+    },
+    {
+      "id": "laltrove",
+      "name": "L'Altrove",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "south of Casa Rotta, between Cherasco and Alba",
+      "location": {
+        "lat": 44.59,
+        "lng": 7.98,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Its school Voli Erranti is a separate entry."
+    },
+    {
+      "id": "push",
+      "name": "PUSH",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "west of Saluzzo, near Monviso",
+      "location": {
+        "lat": 44.62,
+        "lng": 7.36,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "alpe-pianello",
+      "name": "Alpe Pianello",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "Lago Maggiore, east shore",
+      "location": {
+        "lat": 46.0,
+        "lng": 8.68,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "monte-venere",
+      "name": "Monte Venere",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "Lago Maggiore, near Verbania",
+      "location": {
+        "lat": 45.96,
+        "lng": 8.62,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Drawn with the single-house icon on the map, listed under intentional communities in the legend."
+    },
+    {
+      "id": "casa-delle-querce",
+      "name": "Casa delle Querce",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "south of Lago Maggiore",
+      "location": {
+        "lat": 45.82,
+        "lng": 8.68,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "villaggio-verde",
+      "name": "Il Villaggio Verde",
+      "categories": [
+        "intentional-community"
+      ],
+      "near": "north of Novara",
+      "location": {
+        "lat": 45.66,
+        "lng": 8.4,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "montesole",
+      "name": "Monte Sole",
+      "categories": [
+        "cohousing"
+      ],
+      "near": "east of Torino",
+      "location": {
+        "lat": 45.1,
+        "lng": 7.84,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "andirivieni",
+      "name": "Andirivieni",
+      "categories": [
+        "cohousing"
+      ],
+      "near": "Saluzzo",
+      "location": {
+        "lat": 44.65,
+        "lng": 7.49,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "numero-zero",
+      "name": "Numero Zero",
+      "categories": [
+        "cohousing"
+      ],
+      "near": "Torino (drawn northwest of Torino on the earlier map, not placed on the newest one)",
+      "location": {
+        "lat": 45.08,
+        "lng": 7.66,
+        "approximate": true
+      },
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "casa-germogli",
+      "name": "Casa Germogli",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "south of Cuneo",
+      "location": {
+        "lat": 44.31,
+        "lng": 7.52,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "collina-di-levice",
+      "name": "La Collina di Levice",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "Levice, Alta Langa",
+      "location": {
+        "lat": 44.54,
+        "lng": 8.16,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "bosconauti",
+      "name": "Bosconauti",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "southeast of Tortona",
+      "location": {
+        "lat": 44.75,
+        "lng": 9.02,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "On the earlier map this spot was Casa Marlene."
+    },
+    {
+      "id": "casa-marlene",
+      "name": "Casa Marlene",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "southeast of Tortona",
+      "location": {
+        "lat": 44.72,
+        "lng": 9.0,
+        "approximate": true
+      },
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "From the earlier map; kept."
+    },
+    {
+      "id": "anima-mundi",
+      "name": "Anima Mundi",
+      "categories": [
+        "association"
+      ],
+      "near": "south of Lago Maggiore, Lombardia side",
+      "location": {
+        "lat": 45.74,
+        "lng": 8.86,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "orsolina-28",
+      "name": "Orsolina 28",
+      "categories": [
+        "association",
+        "farm"
+      ],
+      "near": "east of Torino, toward Asti",
+      "location": {
+        "lat": 45.05,
+        "lng": 8.26,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "fattoria-rancina",
+      "name": "Fattoria Rancina",
+      "categories": [
+        "farm"
+      ],
+      "near": "south of Lago Maggiore",
+      "location": {
+        "lat": 45.79,
+        "lng": 8.8,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "valli-unite",
+      "name": "Valli Unite",
+      "categories": [
+        "farm",
+        "association"
+      ],
+      "near": "near Tortona",
+      "location": {
+        "lat": 44.82,
+        "lng": 8.94,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Drawn with both the tree and the hand icon."
+    },
+    {
+      "id": "amilu-farm",
+      "name": "Amilu Farm",
+      "categories": [
+        "farm"
+      ],
+      "near": "east of Torino",
+      "location": {
+        "lat": 45.08,
+        "lng": 7.95,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "village-forest-school",
+      "name": "Village Forest School",
+      "categories": [
+        "school"
+      ],
+      "near": "east of Torino, next to Orsolina 28",
+      "location": {
+        "lat": 45.04,
+        "lng": 8.3,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "voli-erranti",
+      "name": "L'Altrove – Voli Erranti",
+      "categories": [
+        "school"
+      ],
+      "near": "at L'Altrove",
+      "location": {
+        "lat": 44.585,
+        "lng": 7.985,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "il-bardo",
+      "name": "Il Bardo",
+      "categories": [
+        "micronation"
+      ],
+      "near": "near Mondovì",
+      "location": {
+        "lat": 44.36,
+        "lng": 7.84,
+        "approximate": true
+      },
+      "on_newest_map": true,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": ""
+    },
+    {
+      "id": "selva-viva",
+      "name": "Selva Viva",
+      "categories": [
+        "association"
+      ],
+      "near": "south of Lago Maggiore",
+      "location": {
+        "lat": 45.76,
+        "lng": 8.72,
+        "approximate": true
+      },
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "From the earlier map; kept."
+    },
+    {
+      "id": "dimensione-fiume",
+      "name": "Dimensione Fiume",
+      "categories": [
+        "friendly-house"
+      ],
+      "near": "near Novara, by the Ticino",
+      "location": {
+        "lat": 45.55,
+        "lng": 8.7,
+        "approximate": true
+      },
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "From the earlier map; kept."
+    }
+  ],
+  "not_yet_placed": [
+    {
+      "id": "alveare-che-dice-si",
+      "name": "Alveare che dice sì",
+      "categories": [
+        "association"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    },
+    {
+      "id": "maciot",
+      "name": "Az. Agricola \"Maciot\"",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    },
+    {
+      "id": "renzo-oliva",
+      "name": "Renzo Oliva",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    },
+    {
+      "id": "crealto",
+      "name": "Agriturismo \"Crealto\"",
+      "categories": [
+        "farm"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    },
+    {
+      "id": "a-modo-mio",
+      "name": "A Modo Mio (scuola outdoor)",
+      "categories": [
+        "school"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    },
+    {
+      "id": "biula",
+      "name": "Biula – linfa di betulla",
+      "categories": [
+        "producer"
+      ],
+      "near": "not placed on the map",
+      "location": null,
+      "on_newest_map": false,
+      "description": "",
+      "website": "",
+      "contact": "",
+      "open_questions": "Location unknown; kept aside until it can be placed.",
+      "region": "ITA-piemonte"
+    }
+  ]
+}

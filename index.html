@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roots</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div class="masthead">
+      <h1 class="wordmark">ROOTS</h1>
+      <p class="tagline">Conscious spaces around us</p>
+    </div>
+  </header>
+  <aside class="side">
+    <p class="list-title" id="list-title"></p>
+    <nav class="legend" id="legend" aria-label="Places by type"></nav>
+    <p class="credits">Map: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Towns: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0).</p>
+  </aside>
+  <div class="map-wrap">
+    <svg id="map" role="img" aria-label="Hand-drawn world map of conscious places"></svg>
+    <div class="map-heading">
+      <ol class="crumbs" id="crumbs" aria-label="Where you are"></ol>
+      <h2 id="map-title">The world</h2>
+    </div>
+    <div class="zoom">
+      <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+      <button id="zoom-reset" type="button" aria-label="Zoom out to the whole world">⌂</button>
+    </div>
+  </div>
+  <div class="note" id="note" aria-live="polite"><p class="hint">Loading the map…</p></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

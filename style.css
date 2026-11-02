@@ -1,0 +1,383 @@
+/* Layout: a notebook spread. Left margin column holds the title and the list of places;
+   the zoomable world map fills the rest, with the place heading written on its top-left
+   and the post-it note stuck on its top-right corner.
+   One deliberate look (black pen on yellowed paper) for every viewer theme. */
+:root {
+  --page: #f1e4bb;          /* yellowed notebook paper */
+  --page-shade: #dcc995;    /* darker paper toward the edges */
+  --land: #ecdcbf;          /* map beige from the paper map (icon fill) */
+  --land-none: #d9d5c9;     /* regions with no places yet: grey */
+  --land-data: #e9d8b8;     /* regions with places: brown */
+  --land-focus: #ddb995;    /* the region in focus: red-brown */
+  --water: #b7c6c6;         /* map grey-blue from the paper map */
+  --ink: #1b1a17;           /* black fine-liner */
+  --ink-soft: #4c463b;
+  --note-yellow: #f6e46a;
+  --note-pink: #f5a48c;
+  --note-green: #a7cf74;
+  --focus: #2c5f9e;
+
+  --pen: "Kalam", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+/* scroll bars drawn like the rest of the page: a thin pen stroke on paper */
+* { scrollbar-width: thin; scrollbar-color: var(--ink-soft) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; border-left: 1px dashed var(--page-shade); }
+::-webkit-scrollbar-thumb { background: var(--ink-soft); border: 3px solid var(--page); border-radius: 6px 4px 7px 5px / 9px 6px 8px 7px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+::-webkit-scrollbar-corner { background: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.45;
+  background-color: var(--page);
+  background-image: radial-gradient(ellipse at 50% 40%, transparent 55%, var(--page-shade) 140%);
+  background-attachment: fixed;
+}
+/* paper grain over everything */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .22 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head map" "side map";
+}
+
+.head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-block: 18px 6px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: 12px;
+}
+
+/* ---------- left margin column ---------- */
+.side {
+  grid-area: side;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding-block: 8px 28px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.masthead { display: flex; flex-direction: column; gap: 2px; }
+.wordmark {
+  align-self: flex-start;
+  margin: 0;
+  padding: 2px 12px 0;
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: 0.16em;
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 4px double var(--ink);
+  transform: rotate(-1.5deg);
+}
+.tagline { margin: 6px 0 0; font-size: 15px; color: var(--ink-soft); text-wrap: balance; }
+
+.list-title { margin: 0; font-weight: 400; font-size: 15px; color: var(--ink-soft); }
+.list-title b { color: var(--ink); font-weight: 700; }
+
+.legend { display: flex; flex-direction: column; gap: 14px; }
+.legend-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.legend-head svg { width: 26px; height: 26px; flex: none; }
+.legend-head .label { min-width: 0; }
+.legend-head .count {
+  margin-left: auto;
+  flex: none;
+  min-width: 26px;
+  padding: 0 4px;
+  font-weight: 400;
+  font-size: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border: 1.2px solid var(--ink);
+  border-radius: 55% 45% 50% 50% / 50% 55% 45% 50%;
+}
+.legend-head[aria-pressed="false"] { color: var(--ink-soft); text-decoration: line-through; text-decoration-thickness: 1.5px; border-bottom-style: dashed; }
+.legend-head[aria-pressed="false"] svg { opacity: .35; }
+.legend-group ul { list-style: none; margin: 4px 0 0; padding: 0 0 0 34px; }
+.legend-group li button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 300;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.legend-group li button::before { content: "– "; }
+.legend-group li button:hover { font-weight: 400; }
+.legend-group li button[aria-current="true"] { font-weight: 700; }
+.legend-group[data-off] ul { opacity: .35; }
+.empty { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+
+/* ---------- map ---------- */
+.map-wrap {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  /* doubled margin line, like a re-traced pen line */
+  border-left: 1.5px solid var(--ink);
+  box-shadow: inset 4px 0 0 -2.6px var(--ink);
+}
+#map { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#map:active { cursor: grabbing; }
+
+.zoom {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.zoom button {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--ink);
+  border-radius: 46% 54% 50% 50% / 52% 46% 54% 48%;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.zoom button:hover { background: var(--land); }
+
+/* heading written on the map: where you are, with the way back up */
+.map-heading {
+  position: absolute;
+  top: 14px;
+  left: 22px;
+  max-width: calc(100% - 360px);
+  pointer-events: none;
+}
+.crumbs { display: flex; flex-wrap: wrap; gap: 0 6px; margin: 0; padding: 0; list-style: none; font-size: 15px; pointer-events: auto; }
+.crumbs li + li::before { content: "›"; margin-right: 6px; color: var(--ink-soft); }
+.crumbs button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-weight: 400;
+  font-size: 15px;
+  cursor: pointer;
+}
+.crumbs button:hover { font-weight: 700; }
+.map-heading .title-count {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-left: .25em;
+  padding: .12em .3em;
+  font-size: .5em;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  border: 1.6px solid var(--ink);
+  border-radius: 55% 45% 50% 50% / 50% 55% 45% 50%;
+}
+.map-heading h2 {
+  display: inline-block;
+  margin: 2px 0 0;
+  padding: 0 6px 4px 0;
+  font-weight: 700;
+  font-size: clamp(24px, 3.2vw, 38px);
+  line-height: 1.1;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.map-heading .title-name { display: inline-block; padding-bottom: 4px; border-bottom: 4px double var(--ink); }
+
+/* ---------- post-it note, stuck on the top right of the map ---------- */
+.note {
+  grid-area: map;
+  justify-self: end;
+  align-self: start;
+  z-index: 2;
+  position: relative;
+  margin-top: 18px;
+  margin-right: max(18px, env(safe-area-inset-right, 0px));
+  width: min(300px, calc(100% - 36px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding: 22px 18px 16px;
+  background: var(--note-yellow);
+  color: var(--ink);
+  transform: rotate(1.4deg);
+  box-shadow: 0 1px 0 rgba(60, 40, 0, .1), 0 10px 16px -10px rgba(60, 40, 0, .5);
+}
+.note::before { /* strip of tape */
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 70px;
+  height: 18px;
+  transform: translateX(-50%) rotate(-3deg);
+  background: rgba(255, 255, 255, .45);
+  border-left: 1px dashed rgba(0, 0, 0, .15);
+  border-right: 1px dashed rgba(0, 0, 0, .15);
+}
+.note[data-tone="pink"] { background: var(--note-pink); transform: rotate(-1deg); }
+.note[data-tone="green"] { background: var(--note-green); transform: rotate(.8deg); }
+.note h2 {
+  display: inline-block;
+  margin: 0 28px 6px 0;
+  padding: 2px 8px;
+  border: 1.5px solid var(--ink);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.note .kinds { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 4px 0 8px; }
+.note .kind { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 400; }
+.note .kind svg { width: 24px; height: 24px; }
+.note p { margin: 0 0 6px; }
+.note dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 10px; margin: 6px 0 0; font-size: 15px; }
+.note dt { font-weight: 700; }
+.note dd { margin: 0; overflow-wrap: anywhere; }
+.note .close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--pen);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.note .hint { margin: 0 0 4px; font-weight: 700; font-size: 18px; }
+
+button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- pen strokes on the map ---------- */
+.sea { fill: var(--water); }
+.area { stroke: none; cursor: pointer; fill: var(--land-none); }
+.area.has-data { fill: var(--land-data); }
+.area.focus { fill: var(--land-focus); }
+.area.hidden-by-regions { display: none; }
+.country-line { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+.country-line.b { stroke-width: .6; opacity: .7; }
+.region-line { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: 5 3.5; stroke-linecap: round; opacity: .9; }
+.focus-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.focus-line.b { stroke-width: .9; opacity: .8; }
+.lake-line { fill: none; stroke: var(--ink); stroke-width: .9; }
+.leader { stroke: var(--ink); stroke-width: .9; fill: none; }
+.area-label { font-family: var(--pen); font-weight: 300; letter-spacing: .12em; fill: var(--ink-soft); pointer-events: none; }
+.area-label.country { font-weight: 400; fill: var(--ink); }
+.river { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
+.water { fill: var(--water); stroke: none; }
+.water-hatch { fill: url(#hatch); stroke: none; pointer-events: none; }
+.city circle { fill: var(--page); stroke: var(--ink); stroke-width: 1.2; }
+.city .dot { fill: var(--ink); stroke: none; }
+.city text { font-family: var(--pen); font-weight: 400; font-size: 12px; letter-spacing: .06em; fill: var(--ink); }
+.city.small text { font-size: 11px; font-weight: 300; }
+.icon { fill: var(--land); stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.place { cursor: pointer; }
+.cluster { cursor: pointer; }
+.cluster circle { fill: var(--note-yellow); stroke: var(--ink); stroke-width: 1.3; }
+.cluster .ring { fill: none; stroke-width: .8; }
+.cluster text { font-family: var(--pen); font-weight: 700; font-size: 14px; fill: var(--ink); }
+.cluster:focus { outline: none; }
+.cluster:focus-visible circle { stroke-width: 2.4; }
+.place .name-tag { display: none; pointer-events: none; }
+.place:hover .name-tag, .place:focus-visible .name-tag, .place.selected .name-tag { display: inline; }
+.name-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
+.name-tag text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
+.place.selected .name-tag text { font-weight: 700; }
+.place .spot { fill: var(--ink); stroke: var(--page); stroke-width: 1; }
+/* while the map moves: no pen wobble and no labels, so panning and zooming stay smooth */
+#map.moving g { filter: none !important; }
+#map.moving .area-label, #map.moving .city { display: none; }
+.place .halo { fill: var(--note-yellow); opacity: 0; transition: opacity .15s; }
+.place:hover .halo, .place:focus-visible .halo, .place.selected .halo { opacity: .95; }
+.place:focus { outline: none; }
+.place.off { display: none; }
+
+@media (max-width: 760px) {
+  .app {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "head" "map" "note" "side";
+  }
+  .head, .side {
+    overflow: visible;
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+  }
+  /* on phones the note sits under the map, then the list */
+  .map-heading { max-width: calc(100% - 80px); }
+  .map-wrap { height: 66vh; min-height: 360px; border-left: 0; box-shadow: none; border-block: 1.5px solid var(--ink); }
+  .note { grid-area: note; justify-self: stretch; width: auto; max-height: none; margin: 18px max(16px, env(safe-area-inset-right, 0px)) 4px max(16px, env(safe-area-inset-left, 0px)); }
+  .note, .note[data-tone] { transform: rotate(-.6deg); }
+  .wordmark { font-size: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+.place.ghost { pointer-events: none; }
+.credits { margin: auto 0 0; padding-top: 16px; font-size: 12px; color: var(--ink-soft); }
+.credits a { color: inherit; }
