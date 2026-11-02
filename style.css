@@ -104,6 +104,24 @@ body::after {
 }
 .tagline { margin: 6px 0 0; font-size: 15px; color: var(--ink-soft); text-wrap: balance; }
 
+/* ---------- search ---------- */
+.search { position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 2px 4px; border-bottom: 1.5px solid var(--ink); }
+.search svg { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 16px; color: var(--ink); padding: 4px 0; outline: none; }
+.search input::placeholder { color: var(--ink-soft); opacity: .75; }
+.search input::-webkit-search-cancel-button { display: none; }
+.search:focus-within { border-bottom-width: 2.5px; padding-bottom: 3px; }
+.search-clear { border: 0; background: none; font: inherit; font-size: 22px; line-height: 1; color: var(--ink-soft); cursor: pointer; padding: 0 4px; }
+.search-clear:hover { color: var(--ink); }
+.offer-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: -4px; }
+.offer-chips .chips-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin-right: 2px; }
+.offer-chips button { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 12px 14px 12px 13px; padding: 1px 10px; cursor: pointer; }
+.offer-chips button:hover { background: var(--land); }
+.offer-chips button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.note .offers-line { margin: 6px 0 0; font-size: 15px; }
+.note .offers-line b { font-weight: 700; }
+.legend-group li small.match { display: block; margin: -2px 0 2px 14px; font-size: 13px; color: var(--ink-soft); }
+
 .list-title { margin: 0; font-weight: 400; font-size: 15px; color: var(--ink-soft); }
 .list-title b { color: var(--ink); font-weight: 700; }
 
@@ -565,3 +583,65 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .route-tip .swatch.car { stroke: var(--way-car); }
 .route-tip .swatch.bike { stroke: var(--way-bike); stroke-dasharray: 5 3; }
 .route-tip .swatch.foot { stroke: var(--way-foot); stroke-dasharray: .5 3.5; stroke-width: 2.6; }
+
+/* ---------- the full profile of a place: a big notebook page over the map ---------- */
+.note h2 .open-profile { all: unset; cursor: pointer; display: inline; }
+.note h2 .open-profile svg { width: 15px; height: 15px; vertical-align: 1px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.note h2 .open-profile:hover { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.note h2 .open-profile:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.sheet-wrap {
+  position: fixed; inset: 0; z-index: 20;
+  display: grid; place-items: start center;
+  padding: 4vh 16px;
+  overflow-y: auto;
+  background: rgba(27, 26, 23, .38);
+}
+.sheet-wrap[hidden] { display: none; }
+body.sheet-open { overflow: hidden; }
+.sheet {
+  position: relative;
+  width: min(760px, 100%);
+  padding: 30px clamp(18px, 4vw, 44px) 36px;
+  background: var(--page);
+  background-image: repeating-linear-gradient(transparent 0 31px, rgba(76, 70, 59, .09) 31px 32px);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: 4px 6px 0 rgba(27, 26, 23, .25);
+  color: var(--ink);
+  font-family: var(--pen);
+}
+.sheet .close { position: absolute; top: 10px; right: 14px; border: 0; background: none; font: inherit; font-size: 30px; line-height: 1; cursor: pointer; color: var(--ink); }
+.sheet header { margin-bottom: 8px; }
+.sheet h2 {
+  display: inline-block; margin: 0 40px 10px 0; padding: 2px 12px;
+  font-size: clamp(24px, 4vw, 32px); letter-spacing: .08em; text-transform: uppercase; line-height: 1.15;
+  border-top: 1.5px solid var(--ink); border-bottom: 4px double var(--ink);
+  transform: rotate(-1deg);
+}
+.sheet .kinds { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 16px; }
+.sheet .kinds .kind { display: inline-flex; align-items: center; gap: 6px; }
+.sheet .where { margin: 6px 0 0; color: var(--ink-soft); font-size: 16px; }
+.sheet-section { margin-top: 22px; }
+.sheet-section h3 {
+  margin: 0 0 8px; font-size: 15px; letter-spacing: .16em; text-transform: uppercase;
+  display: inline-block; border-bottom: 1.5px solid var(--ink); padding: 0 2px 1px;
+}
+.sheet-section h4 { margin: 12px 0 2px; font-size: 16px; font-weight: 700; }
+.sheet-section p { margin: 4px 0; font-size: 16px; line-height: 1.5; }
+.sheet .prose p { max-width: 62ch; }
+.sheet .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.sheet .pill { display: inline-block; padding: 1px 10px; border: 1px solid var(--ink); border-radius: 12px 14px 12px 13px; font-size: 15px; background: rgba(255, 255, 255, .25); }
+.sheet .pill.yes { background: var(--note-green); }
+.sheet .pill.no { color: var(--ink-soft); border-style: dashed; }
+.sheet .pill.kind { background: var(--note-yellow); }
+.sheet .choice small { color: var(--ink-soft); font-size: 14px; }
+.sheet .big-number { font-size: 30px; font-weight: 700; margin: 0; }
+.sheet ul.checks, .sheet ul.offers { list-style: none; margin: 4px 0; padding: 0; font-size: 16px; }
+.sheet ul.checks li, .sheet ul.offers li { margin: 3px 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.sheet .tick { width: 15px; height: 15px; flex: none; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: translateY(2px); }
+.sheet .src, .sheet .unconfirmed { font-size: 13px; color: var(--ink-soft); }
+.sheet .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.sheet .media img { width: 100%; display: block; border: 1px solid var(--ink); }
+.sheet .media figcaption { font-size: 14px; color: var(--ink-soft); }
+.sheet .empty { margin-top: 18px; font-size: 17px; color: var(--ink-soft); }
+.sheet a { color: inherit; }

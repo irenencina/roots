@@ -44,3 +44,14 @@ python3 -m http.server
 ```
 
 Then visit http://localhost:8000.
+
+## Place profiles and search
+
+`data/profile.json` lists everything a place's profile can hold, in sections (about, needs and
+offers, membership, governance and economics, lifestyle and culture, diversity), with English and
+Spanish labels and the options for each choice. A place in `data/places.json` fills in any of
+these fields by id; the full profile page (opened from the title on the post-it) shows only the
+fields a place has. The sign-up form for new places will be built from the same list.
+
+The search box in the side list finds places by name, town, type, offer or description, ignoring
+accents and case. The offer chips under it filter by kind of offer.

@@ -59,6 +59,10 @@
       noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
       nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
+      search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
+      openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
+      offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
+      found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
     es: {
       tagline: "Espacios conscientes a nuestro alrededor",
@@ -81,6 +85,10 @@
       noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
       nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
+      search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
+      openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
+      offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
+      found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
   };
   const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
@@ -132,7 +140,8 @@
     // value null = just far enough to take in the selected place's direct connections
     reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
-    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
+    query: "", offerKind: null, offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
+    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)) || !matchesSearch(p); },
   };
 
   let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
@@ -525,6 +534,7 @@
   // after a language change, every piece of text is written again
   function refreshAll() {
     applyStaticText();
+    renderSearch();
     renderModes();
     renderHeading();
     renderList();
@@ -720,7 +730,7 @@
     // a place under the swatch or the zoom buttons is treated like one just off the edge of the map
     const underPanel = (x, y) => panelBoxes.some((b) => x > b.x - 6 && x < b.x + b.w + 6 && y > b.y - 6 && y < b.y + b.h + 6);
 
-    const visible = state.places.filter((p) => p.location && !p.categories.every((c) => state.hidden.has(c)));
+    const visible = state.places.filter((p) => p.location && !state.hiddenPlace(p));
 
     // 0. zoomed far out: one circled count per country instead of every icon
     if (k < ADMIN_ZOOM) {
@@ -1262,10 +1272,72 @@
     return r ? r.properties.name : c ? countryName(c) : t("theWorldIn");
   }
 
+  // ---------- search: by name, type, town, offer or description; accents and case don't matter ----------
+  const fold = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const offerKindLabel = (k) => (k ? (settings.lang === "es" && k.es) || k.en : "");
+  function haystack(p) {
+    const cats = p.categories.map((c) => state.catById[c]).filter(Boolean).flatMap((c) => [c.label_en, c.label_es, c.label_it]);
+    const offers = (p.offers || []).flatMap((o) => { const k = state.offerKindById[o.kind]; return [o.what, k && k.en, k && k.es]; });
+    return fold([p.name, p.near, p.description].concat(cats, offers).join(" "));
+  }
+  function matchesSearch(p) {
+    if (state.offerKind && !(p.offers || []).some((o) => o.kind === state.offerKind)) return false;
+    const words = fold(state.query).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const h = p._hay || (p._hay = haystack(p));
+    return words.every((w) => h.includes(w));
+  }
+  const searching = () => !!(state.query.trim() || state.offerKind);
+  // what matched, shown under the name in the list: the offers that fit the search
+  function matchHint(p) {
+    const words = fold(state.query).split(/\s+/).filter(Boolean);
+    const hits = (p.offers || []).filter((o) => (!state.offerKind || o.kind === state.offerKind) &&
+      (!words.length || words.some((w) => fold(o.what + " " + offerKindLabel(state.offerKindById[o.kind])).includes(w))));
+    return hits.map((o) => o.what).join(" · ");
+  }
+  const searchEl = $("search"), chipsEl = $("offer-chips");
+  function renderSearch() {
+    searchEl.placeholder = t("search");
+    searchEl.setAttribute("aria-label", t("searchLabel"));
+    $("search-clear").setAttribute("aria-label", t("clearSearch"));
+    $("search-clear").hidden = !searching();
+    const used = new Set(state.places.flatMap((p) => (p.offers || []).map((o) => o.kind)));
+    const kinds = state.offerKinds.filter((k) => used.has(k.id));
+    chipsEl.hidden = !kinds.length;
+    chipsEl.innerHTML = kinds.length ? '<span class="chips-title">' + t("offersBy") + "</span>" + kinds.map((k) =>
+      '<button type="button" data-kind="' + esc(k.id) + '" aria-pressed="' + (state.offerKind === k.id) + '">' + esc(offerKindLabel(k)) + "</button>").join("") : "";
+    chipsEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+      state.offerKind = state.offerKind === b.dataset.kind ? null : b.dataset.kind;
+      searchChanged();
+    }));
+  }
+  function searchChanged() {
+    renderSearch();
+    renderList();
+    drawRoutes();
+    scheduleMarks();
+    // the selected place stays only while it still matches
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p && !matchesSearch(p)) select(null);
+  }
+  searchEl.addEventListener("input", () => { state.query = searchEl.value; searchChanged(); });
+  searchEl.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { searchEl.value = state.query = ""; state.offerKind = null; searchChanged(); }
+    if (ev.key === "Enter") {
+      // Enter with a single place found goes to it; with several, frames them all
+      const found = state.places.filter((p) => p.location && !state.hiddenPlace(p));
+      if (found.length === 1) select(found[0].id, { zoom: true });
+      else if (found.length > 1) zoomToPlaces(found.map((p) => p.id));
+    }
+  });
+  $("search-clear").addEventListener("click", () => { searchEl.value = state.query = ""; state.offerKind = null; searchChanged(); searchEl.focus(); });
+
   function renderList() {
-    const here = placesInFocus();
-    listTitleEl.hidden = here.length > 0;
-    listTitleEl.textContent = here.length ? "" : t("noPlacesIn", focusName());
+    // while searching, the list shows every place that matches, wherever it is
+    const here = searching() ? state.places.filter((p) => p.location && matchesSearch(p)) : placesInFocus();
+    listTitleEl.hidden = here.length > 0 && !searching();
+    listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, state.query.trim()) : t("foundNone", state.query.trim()))
+      : here.length ? "" : t("noPlacesIn", focusName());
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {
       const places = here.filter((p) => p.categories.includes(c.id));
@@ -1276,7 +1348,11 @@
       group.innerHTML =
         '<button class="legend-head" type="button" aria-pressed="' + !state.hidden.has(c.id) + '" title="' + esc(c.label_it || c.label_en) + '">' +
         iconSvg(c.id, 26) + '<span class="label">' + esc(catLabel(c)) + '</span><span class="count">' + places.length + "</span></button>" +
-        "<ul>" + places.map((p) => '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button></li>").join("") + "</ul>";
+        "<ul>" + places.map((p) => {
+          const hint = searching() ? matchHint(p) : "";
+          return '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button>" +
+            (hint ? '<small class="match">' + esc(hint) + "</small>" : "") + "</li>";
+        }).join("") + "</ul>";
       const head = group.querySelector(".legend-head");
       head.addEventListener("click", () => {
         if (state.hidden.has(c.id)) state.hidden.delete(c.id); else state.hidden.add(c.id);
@@ -1305,16 +1381,94 @@
     const site = p.website ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>" : t("notYet");
     noteEl.innerHTML =
       '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
-      "<h2>" + esc(p.name) + "</h2>" +
+      '<h2><button class="open-profile" type="button" title="' + esc(t("openProfile")) + '">' + esc(p.name) +
+      ' <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10v10M19 5L6 18"/></svg></button></h2>' +
       '<div class="kinds">' + kinds + "</div>" +
       "<p>" + (p.description ? esc(p.description) : t("noDescription")) + "</p>" +
       "<dl><dt>" + t("where") + "</dt><dd>" + esc(p.near || "") + "</dd>" +
       "<dt>" + t("website") + "</dt><dd>" + site + "</dd>" +
       "<dt>" + t("contact") + "</dt><dd>" + (p.contact ? esc(p.contact) : t("notYet")) + "</dd></dl>" +
+      offersNote(p) +
       connectionsNote(p);
     noteEl.querySelector(".close").addEventListener("click", () => select(null));
+    noteEl.querySelector(".open-profile").addEventListener("click", () => openProfile(p));
     noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
   }
+
+  // the post-it stays short: just the kinds of things the place offers (the details are in the profile)
+  function offersNote(p) {
+    const ks = [...new Set((p.offers || []).map((o) => o.kind))].map((k) => state.offerKindById[k]).filter(Boolean);
+    return ks.length ? '<p class="offers-line"><b>' + t("offersBy") + "</b> " + ks.map((k) => esc(offerKindLabel(k))).join(", ") + "</p>" : "";
+  }
+
+  // ---------- the full profile: a big page over the map, with only what the place has filled in ----------
+  const sheetEl = $("sheet");
+  const L = (x) => (settings.lang === "es" && x.es) || x.en;
+  const LD = (x) => (settings.lang === "es" && x.desc_es) || x.desc_en || "";
+  const filled = (v) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length);
+  const pill = (txt, cls) => '<span class="pill' + (cls ? " " + cls : "") + '">' + esc(txt) + "</span>";
+  const TICK = '<svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8.5l3.5 3.5 7.5-8.5"/></svg>';
+  function fieldHtml(f, v) {
+    const opt = (id) => (f.options || []).find((x) => x.id === id);
+    switch (f.type) {
+      case "text": return '<div class="prose">' + esc(v).split(/\n{2,}/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>";
+      case "line": case "date": return "<p>" + esc(v) + "</p>";
+      case "number": return '<p class="big-number">' + esc(v) + "</p>";
+      case "link": return '<p><a href="' + esc(v) + '" target="_blank" rel="noopener">' + esc(String(v).replace(/^https?:\/\//, "").replace(/\/$/, "")) + "</a></p>";
+      case "email": return '<p><a href="mailto:' + esc(v) + '">' + esc(v) + "</a></p>";
+      case "tags": return '<p class="pills">' + v.map((x) => pill(x)).join("") + "</p>";
+      case "choice": { const o = opt(v); return o ? '<p class="choice">' + pill(L(o)) + (LD(o) ? " <small>" + esc(LD(o)) + "</small>" : "") + "</p>" : ""; }
+      case "choices": return '<ul class="checks">' + v.map(opt).filter(Boolean).map((o) => "<li>" + TICK + esc(L(o)) + "</li>").join("") + "</ul>";
+      case "offers": return '<ul class="offers">' + v.map((o) => {
+        const k = state.offerKindById[o.kind];
+        return "<li>" + pill(k ? L(k) : o.kind, "kind") + " " + esc(o.what) +
+          (o.source ? ' <a class="src" href="' + esc(o.source) + '" target="_blank" rel="noopener">' + t("source") + "</a>" : "") +
+          (o.confirmed ? "" : ' <small class="unconfirmed">(' + t("toConfirm") + ")</small>") + "</li>";
+      }).join("") + "</ul>";
+      case "media": return '<div class="media">' + v.map((m) => /\.(jpe?g|png|webp|gif)$/i.test(m.url)
+        ? '<figure><img src="' + esc(m.url) + '" alt="' + esc(m.caption || "") + '" loading="lazy">' + (m.caption ? "<figcaption>" + esc(m.caption) + "</figcaption>" : "") + "</figure>"
+        : '<p><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.caption || m.url) + "</a></p>").join("") + "</div>";
+      default: return "<p>" + esc(String(v)) + "</p>";
+    }
+  }
+  function openProfile(p) {
+    const pr = state.profile;
+    if (!pr) return;
+    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 26) + esc(state.catById[c] ? catLabel(state.catById[c]) : c) + "</span>").join("");
+    const where = [p.near, state.regionById[p._region] && countryName(state.regionById[p._region]), state.countryById[p._country] && countryName(state.countryById[p._country])].filter(Boolean).join(", ");
+    let body = "", count = 0;
+    pr.sections.forEach((sec) => {
+      const fs = sec.fields.filter((f) => filled(p[f.id]) && !(f.type === "flag"));
+      // yes/no fields become a row of "open to …" marks at the top of their section
+      const flags = sec.fields.filter((f) => f.type === "flag" && typeof p[f.id] === "boolean");
+      if (!fs.length && !flags.length) return;
+      count += fs.length + flags.length;
+      body += '<section class="sheet-section"><h3>' + esc(L(sec)) + "</h3>" +
+        (flags.length ? '<p class="pills">' + flags.map((f) => p[f.id] ? pill(L(f), "yes") : pill(t("notOpen", L(f)), "no")).join("") + "</p>" : "") +
+        fs.map((f) => (fs.length > 1 || sec.fields.length > 1 ? '<h4>' + esc(L(f)) + "</h4>" : "") + fieldHtml(f, p[f.id])).join("") + "</section>";
+    });
+    sheetEl.innerHTML =
+      '<article class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
+      '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
+      '<header><h2 id="sheet-title">' + esc(p.name) + '</h2><div class="kinds">' + kinds + "</div>" +
+      (where ? '<p class="where">' + esc(where) + "</p>" : "") + "</header>" +
+      (count ? body : '<p class="empty">' + t("profileEmpty") + "</p>") + "</article>";
+    sheetEl.hidden = false;
+    document.body.classList.add("sheet-open");
+    const closeBtn = sheetEl.querySelector(".close");
+    closeBtn.addEventListener("click", closeProfile);
+    closeBtn.focus();
+  }
+  function closeProfile() {
+    if (sheetEl.hidden) return;
+    sheetEl.hidden = true;
+    sheetEl.innerHTML = "";
+    document.body.classList.remove("sheet-open");
+    const b = noteEl.querySelector(".open-profile");
+    if (b) b.focus();
+  }
+  sheetEl.addEventListener("click", (ev) => { if (ev.target === sheetEl) closeProfile(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !sheetEl.hidden) closeProfile(); });
 
   function connectionsNote(p) {
     if (!state.mode || !state.connections) return "";
@@ -1453,6 +1607,16 @@
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
+    renderSearch();
+    // the profile fields (and the kinds of offers) come from one shared list, also used to sign up
+    getJSON("data/profile.json").then((pr) => {
+      state.profile = pr;
+      const of = pr.sections.flatMap((x) => x.fields).find((x) => x.id === "offers");
+      state.offerKinds = (of && of.kinds) || [];
+      state.offerKindById = Object.fromEntries(state.offerKinds.map((k) => [k.id, k]));
+      state.places.forEach((p) => { delete p._hay; });
+      renderSearch(); renderList(); refreshNote();
+    }).catch(() => {});
     state.countries = rewind(countries);
     rewind(lakes);
     countries.features.forEach((f) => { state.countryById[f.properties.a3] = f; });

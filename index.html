@@ -23,6 +23,12 @@
     <div class="settings" id="settings" role="dialog" aria-label="Settings" data-t-label="settings" hidden></div>
   </header>
   <aside class="side">
+    <div class="search" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15.2l5 5"/></svg>
+      <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search places, towns, offers…" aria-label="Search">
+      <button id="search-clear" class="search-clear" type="button" aria-label="Clear the search" hidden>×</button>
+    </div>
+    <div class="offer-chips" id="offer-chips" hidden></div>
     <p class="list-title" id="list-title"></p>
     <nav class="legend" id="legend" aria-label="Places by type" data-t-label="byType"></nav>
     <p class="credits" data-t="credits">Map: <a href="https://www.naturalearthdata.com">Natural Earth</a>. Towns: <a href="https://www.geonames.org">GeoNames</a> (CC BY 4.0). Ways: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</p>
@@ -40,6 +46,7 @@
       <button id="zoom-reset" type="button" aria-label="Zoom out to the whole world" data-t-label="zoomReset">⌂</button>
     </div>
   </div>
+  <div class="sheet-wrap" id="sheet" hidden></div>
   <div class="note" id="note" aria-live="polite"><p class="hint">Loading the map…</p></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
