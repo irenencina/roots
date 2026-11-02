@@ -67,7 +67,7 @@
       search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
       openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
       sampleNote: "Sample details, made up for testing. They are not real information about this place.",
-      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", or: " or ",
+      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", or: " or ", goodToKnow: "Good to know", yes: "yes", no: "no",
       offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
       found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
@@ -100,7 +100,7 @@
       search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
       openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
       sampleNote: "Datos de ejemplo, inventados para probar. No es información real sobre este lugar.",
-      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", or: " o ",
+      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", or: " o ", goodToKnow: "Bueno saber", yes: "sí", no: "no",
       offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
       found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
@@ -155,7 +155,7 @@
     // value null = just far enough to take in the selected place's direct connections
     reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
-    query: "", intent: null, themes: new Set(), lang: null, offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
+    query: "", intent: null, themes: new Set(), lang: null, basics: new Set(), offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
     hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)) || !matchesSearch(p); },
   };
 
@@ -1305,6 +1305,7 @@
   // the chips under the search box: what you would like to do, a broad theme, a language
   const searchCfg = () => (state.profile && state.profile.search) || { intents: [] };
   const intentById = (id) => searchCfg().intents.find((x) => x.id === id);
+  const basicById = (id) => (searchCfg().basics || []).find((x) => x.id === id);
   function fitsIntent(p, it) {
     return (it.offers || []).some((k) => (p.offers || []).some((o) => o.kind === k)) ||
       (it.flags || []).some((f) => p[f] === true) || (it.categories || []).some((c) => p.categories.includes(c));
@@ -1316,13 +1317,15 @@
     // several themes: a place fits when it has any of them, so picking more shows more, not less
     if (state.themes.size && !(p[searchCfg().themes] || []).some((x) => state.themes.has(x))) return false;
     if (state.lang && !(p[searchCfg().languages] || []).includes(state.lang)) return false;
+    // "good to know": every basic picked must be a clear yes for the place
+    for (const id of state.basics) { const bc = basicById(id); if (bc && !bc.values.includes(p[bc.field])) return false; }
     const words = fold(state.query).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     const h = p._hay || (p._hay = haystack(p));
     return words.every((w) => h.includes(w));
   }
-  const searching = () => !!(state.query.trim() || state.intent || state.themes.size || state.lang);
-  const clearSearch = () => { searchEl.value = state.query = ""; state.intent = state.lang = null; state.themes.clear(); searchChanged(); };
+  const searching = () => !!(state.query.trim() || state.intent || state.themes.size || state.lang || state.basics.size);
+  const clearSearch = () => { searchEl.value = state.query = ""; state.intent = state.lang = null; state.themes.clear(); state.basics.clear(); searchChanged(); };
   // what matched, shown under the name in the list: the offers that fit the search
   function matchHint(p) {
     const words = fold(state.query).split(/\s+/).filter(Boolean);
@@ -1341,17 +1344,24 @@
     const located = state.places.filter((p) => p.location);
     const intents = searchCfg().intents.filter((it) => located.some((p) => fitsIntent(p, it)));
     const tf = themeField(), themes = tf ? tf.options.filter((o) => located.some((p) => (p[tf.id] || []).includes(o.id))) : [];
+    const basics = (searchCfg().basics || []).filter((bc) => located.some((p) => bc.values.includes(p[bc.field])));
     const langs = [...new Set(located.flatMap((p) => p[searchCfg().languages] || []))].sort();
     chipsEl.hidden = !intents.length && !themes.length;
     const chip = (kind, id, label, on, icon) => '<button type="button" data-' + kind + '="' + esc(id) + '" aria-pressed="' + on + '">' + (icon || "") + esc(label) + "</button>";
     chipsEl.innerHTML =
       (intents.length ? '<div class="chip-row"><span class="chips-title">' + t("wantTo") + "</span>" + intents.map((it) => chip("intent", it.id, L(it), state.intent === it.id)).join("") + "</div>" : "") +
       (themes.length ? '<div class="chip-row"><span class="chips-title">' + t("themes") + "</span>" + themes.map((o) => chip("theme", o.id, L(o), state.themes.has(o.id), art(o.id, "chip-art"))).join("") + "</div>" : "") +
+      (basics.length ? '<div class="chip-row"><span class="chips-title">' + t("goodToKnow") + "</span>" + basics.map((bc) => chip("basic", bc.id, L(bc), state.basics.has(bc.id))).join("") + "</div>" : "") +
       (langs.length > 1 ? '<div class="chip-row"><span class="chips-title">' + t("speaks") + "</span>" + langs.map((l) => chip("speaks", l, l, state.lang === l)).join("") + "</div>" : "");
     chipsEl.querySelectorAll("[data-intent]").forEach((b) => b.addEventListener("click", () => { state.intent = state.intent === b.dataset.intent ? null : b.dataset.intent; searchChanged(); }));
     chipsEl.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.theme;
       if (state.themes.has(id)) state.themes.delete(id); else state.themes.add(id);
+      searchChanged();
+    }));
+    chipsEl.querySelectorAll("[data-basic]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.basic;
+      if (state.basics.has(id)) state.basics.delete(id); else state.basics.add(id);
       searchChanged();
     }));
     chipsEl.querySelectorAll("[data-speaks]").forEach((b) => b.addEventListener("click", () => { state.lang = state.lang === b.dataset.speaks ? null : b.dataset.speaks; searchChanged(); }));
@@ -1383,7 +1393,7 @@
     listTitleEl.hidden = here.length > 0 && !searching();
     const it = state.intent && intentById(state.intent), tf = state.themes.size && themeField();
     const ths = tf ? tf.options.filter((o) => state.themes.has(o.id)).map((o) => L(o)).join(t("or")) : "";
-    const what = [state.query.trim(), it && L(it), ths, state.lang].filter(Boolean).join(" · ");
+    const what = [state.query.trim(), it && L(it), ths].concat([...state.basics].map((id) => basicById(id)).filter(Boolean).map((bc) => L(bc)), [state.lang]).filter(Boolean).join(" · ");
     listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, what) : t("foundNone", what))
       : here.length ? "" : t("noPlacesIn", focusName());
     legendEl.innerHTML = "";
@@ -1596,6 +1606,7 @@
     }
     switch (f.type) {
       case "levels": return levelsHtml(f, v);
+      case "flag": return '<p class="stamps"><span class="stamp ' + (v ? "yes" : "no") + '" style="--tilt:-2deg">' + (v ? "✓ " + t("yes") : "✗ " + t("no")) + "</span></p>";
       case "text": return '<div class="prose' + (f.id === "vision" ? " vision" : "") + '">' + esc(v).split(/\n{2,}/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>";
       case "line": case "date": return "<p>" + esc(v) + "</p>";
       case "number": return '<p class="big-number">' + esc(v) + "</p>";
@@ -1673,7 +1684,7 @@
     const glance = glanceHtml(p, fieldById);
     let body = "", count = 0;
     pr.sections.forEach((sec) => {
-      const fs = sec.fields.filter((f) => !GLANCE.includes(f.id) && fits(f, p) && filled(p[f.id]) && f.type !== "flag");
+      const fs = sec.fields.filter((f) => !GLANCE.includes(f.id) && fits(f, p) && filled(p[f.id]) && (f.type !== "flag" || typeof p[f.id] === "boolean"));
       if (!fs.length) return;
       count += fs.length;
       // the closed card still shows the drawings of what applies, as a preview

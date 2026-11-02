@@ -740,6 +740,12 @@
           ]
         },
         {
+          "id": "lgbtq_friendly",
+          "type": "flag",
+          "en": "LGBTQ+ friendly",
+          "es": "Amigable con LGBTQ+"
+        },
+        {
           "id": "practices",
           "type": "choices",
           "en": "Practices",
@@ -810,7 +816,7 @@
     }
   ],
   "search": {
-    "note": "What people can search by. Only what a place offers, its broad themes and its languages: personal details (ages, gender, rules, money) stay on the profile page and are never filters, so nobody picks a community by them. A place fits an intent when it has one of its offers, says yes to one of its flags, or is one of its types.",
+    "note": "What people can search by. Only what a place offers, its broad themes and its languages: personal details (ages, gender, rules, money) stay on the profile page and are never filters, so nobody picks a community by them. A place fits an intent when it has one of its offers, says yes to one of its flags, or is one of its types. The 'good to know' filters are a few basics a visitor may really need; they only check a yes, never a detail.",
     "intents": [
       {
         "id": "visit",
@@ -880,6 +886,36 @@
       }
     ],
     "themes": "purpose",
-    "languages": "languages"
+    "languages": "languages",
+    "basics": [
+      {
+        "id": "lgbtq",
+        "en": "LGBTQ+ friendly",
+        "es": "Amigable con LGBTQ+",
+        "field": "lgbtq_friendly",
+        "values": [
+          true
+        ]
+      },
+      {
+        "id": "pets",
+        "en": "Pets welcome",
+        "es": "Mascotas bienvenidas",
+        "field": "pets",
+        "values": [
+          "allowed",
+          "some"
+        ]
+      },
+      {
+        "id": "sober",
+        "en": "Substance-free",
+        "es": "Sin sustancias",
+        "field": "substances",
+        "values": [
+          "none"
+        ]
+      }
+    ]
   }
 }

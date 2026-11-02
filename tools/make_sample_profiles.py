@@ -137,6 +137,7 @@ def fill(p, schema, rnd):
     p["open_members"] = rnd.random() < .6
     p["open_visitors"] = rnd.random() < .8
     p["open_volunteers"] = rnd.random() < .6
+    p["lgbtq_friendly"] = rnd.random() < .7
     p["how_to_join"] = ("Come to an open morning, then a trial week with your child." if "school" in p["categories"]
                         else "Come for a visit weekend first, then a trial period of six months.")
     if level == "medium":
