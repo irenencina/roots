@@ -33,6 +33,8 @@
   const NOTE_TONES = ["yellow", "pink", "green"];
   const ADMIN_ZOOM = 5;   // from this zoom on, a country's regions are drawn
   const RIVER_ZOOM = 12;  // rivers appear when you are close
+  const SPREAD_ZOOM = 40; // from here, small groups fan out instead of showing a number
+  const SPREAD_MAX = 6;   // bigger groups always stay a numbered circle
 
   const $ = (id) => document.getElementById(id);
   const svg = $("map");
@@ -278,27 +280,76 @@
       });
     }
 
-    // 1. place icons, nudged apart when they would sit on top of each other
+    // 1. places that crowd the same spot on screen are grouped. Zoomed out, a group is one
+    //    numbered circle; closer in, its icons fan out around the centre, each with a dot on
+    //    its real spot and a pen line to the icon.
     const size = Math.max(18, Math.min(28, 14 + Math.log2(k) * 2));
     const placed = [];
-    const order = visible.slice().sort((a, b) => (b.id === state.selectedId) - (a.id === state.selectedId));
-    (k < ADMIN_ZOOM ? [] : order).forEach((p) => {
-      const [x0, y0] = transform.apply(projection(lnglat(p)));
-      if (!inView(x0, y0, 40)) return;
-      const w = size * p.categories.length;
-      let x = x0, y = y0, box = { x: x - w / 2, y: y - size / 2, w, h: size };
-      if (hits(box)) {
+    const placeIcon = (q, x, y, fanned) => {
+      const w = size * q.p.categories.length;
+      let box = { x: x - w / 2, y: y - size / 2, w, h: size };
+      if (!fanned && hits(box)) {
         for (let ring = 1; ring <= 3 && hits(box); ring++) {
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2 + ring * 0.4;
-            const nx = x0 + Math.cos(a) * size * 0.9 * ring, ny = y0 + Math.sin(a) * size * 0.9 * ring;
+            const nx = q.x0 + Math.cos(a) * size * 0.9 * ring, ny = q.y0 + Math.sin(a) * size * 0.9 * ring;
             const nb = { x: nx - w / 2, y: ny - size / 2, w, h: size };
             if (!hits(nb)) { x = nx; y = ny; box = nb; break; }
           }
         }
       }
       boxes.push(box);
-      placed.push({ p, x, y, x0, y0, w, box });
+      placed.push({ p: q.p, x, y, x0: q.x0, y0: q.y0, w, box });
+    };
+    const pts = [];
+    if (k >= ADMIN_ZOOM) visible.forEach((p) => {
+      const [x0, y0] = transform.apply(projection(lnglat(p)));
+      if (inView(x0, y0, 40)) pts.push({ p, x0, y0 });
+    });
+    const reach = size * 1.7;
+    const groups = [];
+    pts.forEach((q) => {
+      if (q.p.id === state.selectedId) { groups.push({ members: [q], x: q.x0, y: q.y0, solo: true }); return; }
+      const G = groups.find((G) => !G.solo && Math.hypot(G.x - q.x0, G.y - q.y0) < reach);
+      if (G) {
+        G.members.push(q);
+        G.x += (q.x0 - G.x) / G.members.length;
+        G.y += (q.y0 - G.y) / G.members.length;
+      } else groups.push({ members: [q], x: q.x0, y: q.y0 });
+    });
+    groups.sort((a, b) => b.members.length - a.members.length).forEach((G) => {
+      const n = G.members.length;
+      if (n === 1) return placeIcon(G.members[0], G.members[0].x0, G.members[0].y0, false);
+      if (n <= SPREAD_MAX && k >= SPREAD_ZOOM) {
+        // each icon goes in the direction of its real spot, so the pen lines never cross
+        const rad = size * (n <= 2 ? 0.85 : n <= 4 ? 1.15 : 1.5);
+        const ms = G.members.map((q) => ({ q, a: Math.atan2(q.y0 - G.y, q.x0 - G.x) })).sort((u, v) => u.a - v.a);
+        const step = (2 * Math.PI) / n;
+        let best = 0, bestCost = Infinity;
+        for (let t = 0; t < 24; t++) {
+          const off = (t / 24) * step;
+          const cost = ms.reduce((s, m, i) => { const d = Math.abs(((m.a - (-Math.PI + off + i * step)) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); return s + d * d; }, 0);
+          if (cost < bestCost) { bestCost = cost; best = off; }
+        }
+        const slots = ms.map((m, i) => {
+          const a = -Math.PI + best + i * step, w = size * m.q.p.categories.length;
+          const x = G.x + Math.cos(a) * rad, y = G.y + Math.sin(a) * rad;
+          return { q: m.q, x, y, box: { x: x - w / 2, y: y - size / 2, w, h: size } };
+        });
+        // a fan that would run into something already drawn stays a numbered circle
+        if (!slots.some((s) => hits(s.box))) {
+          slots.forEach((s) => placeIcon(s.q, s.x, s.y, true));
+          return;
+        }
+      }
+      const r = 10 + Math.min(9, Math.sqrt(n) * 2);
+      const ids = G.members.map((q) => q.p.id).join(" ");
+      const grp = el("g", { class: "cluster", tabindex: "0", role: "button", "data-ids": ids, "aria-label": n + " places close together, zoom in" }, g);
+      el("circle", { cx: G.x, cy: G.y, r }, grp);
+      el("circle", { class: "ring", cx: G.x + 1, cy: G.y - 1, r: r + 2.5 }, grp);
+      el("text", { x: G.x, y: G.y + 5, "text-anchor": "middle" }, grp).textContent = n;
+      el("title", {}, grp).textContent = G.members.map((q) => q.p.name).join(", ");
+      boxes.push({ x: G.x - r - 3, y: G.y - r - 3, w: 2 * r + 6, h: 2 * r + 6 });
     });
 
     placed.forEach((it) => {
@@ -400,6 +451,18 @@
 
   // Only what the current view needs is loaded: a country's regions when you open that country,
   // towns once you zoom in, rivers once you are close.
+  // zoom in on a group of places until they have room to show separately
+  function zoomToPlaces(ids) {
+    const ps = state.places.filter((p) => ids.includes(p.id));
+    const xy = ps.map((p) => projection(lnglat(p)));
+    const [x0, x1] = d3.extent(xy, (q) => q[0]), [y0, y1] = d3.extent(xy, (q) => q[1]);
+    const right = narrow() ? W : W - Math.min(320, W * 0.34);
+    const span = Math.max(x1 - x0, y1 - y0, 1e-6);
+    const k = Math.min(3000, Math.max(transform.k * 2.5, Math.min(right, H) * 0.35 / span));
+    const t = d3.zoomIdentity.translate(right / 2 - ((x0 + x1) / 2) * k, H / 2 - ((y0 + y1) / 2) * k).scale(k);
+    d3.select(svg).transition().duration(reduceMotion() ? 0 : 650).call(zoom.transform, t);
+  }
+
   function onZoomEnd() {
     if (transform.k >= RIVER_ZOOM && !state.rivers && !state.riversLoading) {
       state.riversLoading = getJSON("data/world/rivers.json").then((r) => { state.rivers = r; buildGeo(); });
@@ -545,6 +608,7 @@
     const placeEl = ev.target.closest(".place");
     if (placeEl) return select(placeEl.dataset.id);
     const cluster = ev.target.closest(".cluster");
+    if (cluster && cluster.dataset.ids) return zoomToPlaces(cluster.dataset.ids.split(" "));
     if (cluster && state.countryById[cluster.dataset.country]) {
       select(null);
       loadAdmin1(cluster.dataset.country);
@@ -568,6 +632,8 @@
   svg.addEventListener("keydown", (ev) => {
     const g = ev.target.closest && ev.target.closest(".place");
     if (g && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); select(g.dataset.id); }
+    const c = ev.target.closest && ev.target.closest(".cluster");
+    if (c && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); c.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
   });
   $("zoom-in").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1.8));
   $("zoom-out").addEventListener("click", () => d3.select(svg).transition().duration(300).call(zoom.scaleBy, 1 / 1.8));

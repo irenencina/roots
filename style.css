@@ -23,6 +23,14 @@
 }
 
 * { box-sizing: border-box; }
+
+/* scroll bars drawn like the rest of the page: a thin pen stroke on paper */
+* { scrollbar-width: thin; scrollbar-color: var(--ink-soft) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; border-left: 1px dashed var(--page-shade); }
+::-webkit-scrollbar-thumb { background: var(--ink-soft); border: 3px solid var(--page); border-radius: 6px 4px 7px 5px / 9px 6px 8px 7px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+::-webkit-scrollbar-corner { background: transparent; }
 html, body { height: 100%; }
 body {
   margin: 0;
