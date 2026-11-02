@@ -60,8 +60,8 @@
       pin: "Pin this place: the ways and the circle stay here while you look at other places", unpin: "Unpin",
       pinned: "Pinned", fromPinned: "From", pinnedHere: "Pinned: the ways start here while you look around.",
       since: (y) => "since " + y, yearsOld: (n) => n + (n === 1 ? " year" : " years"), people: "People", member: "member", members: "members",
-      liveThere: (n) => n + " live there", liveHereKey: "lives there", memberKey: "member", perFigure: (n) => "each figure is " + n + " people",
-      welcomeTitle: "Who is welcome", openAll: "Open all sections", closeAll: "Close all sections",
+      liveThere: (n) => n + " live there", liveHereKey: "lives there", memberKey: "member", personKey: "person", perFigure: (n) => "each figure is " + n + " people",
+      welcomeTitle: "Who is welcome", estimate: "A rough estimate, for display only.", openAll: "Open all sections", closeAll: "Close all sections",
       nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
       search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
@@ -92,8 +92,8 @@
       pin: "Fijar este lugar: los caminos y el círculo se quedan aquí mientras miras otros lugares", unpin: "Quitar",
       pinned: "Fijado", fromPinned: "Desde", pinnedHere: "Fijado: los caminos salen de aquí mientras miras alrededor.",
       since: (y) => "desde " + y, yearsOld: (n) => n + (n === 1 ? " año" : " años"), people: "Personas", member: "miembro", members: "miembros",
-      liveThere: (n) => n + " viven allí", liveHereKey: "vive allí", memberKey: "miembro", perFigure: (n) => "cada figura son " + n + " personas",
-      welcomeTitle: "Quién es bienvenido", openAll: "Abrir todas las secciones", closeAll: "Cerrar todas las secciones",
+      liveThere: (n) => n + " viven allí", liveHereKey: "vive allí", memberKey: "miembro", personKey: "persona", perFigure: (n) => "cada figura son " + n + " personas",
+      welcomeTitle: "Quién es bienvenido", estimate: "Una estimación aproximada, solo orientativa.", openAll: "Abrir todas las secciones", closeAll: "Cerrar todas las secciones",
       nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
       search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
@@ -1544,6 +1544,34 @@
     mature: '<path class="soil" d="M3 33h34"/><path d="M18 33l.8-9h2.4l.8 9M20 24v-5M20 22l-4-3M20 21l4-3.5"/><path class="leaf" d="M20 21c-6 0-11-2.5-11-7.5 0-3.5 2.5-5.5 5-5.5.8-3.2 3.3-5 6-5s5.2 1.8 6 5c2.5 0 5 2 5 5.5 0 5-5 7.5-11 7.5z"/>',
   };
   const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+  // a field is left out for places that are only of types it does not fit (a school has no pets
+  // policy); some fields have another name for some types ("How to enrol" for a school)
+  const fits = (f, p) => !f.not_for || p.categories.some((c) => !f.not_for.includes(c));
+  const FL = (f, p) => { const c = f.label_for && p.categories.find((x) => f.label_for[x]); return L(c ? f.label_for[c] : f); };
+  // a rough picture of who is there: bars for ages, a ring for gender (estimates, never exact)
+  const DIST_FILLS = ["var(--note-green)", "var(--note-yellow)", "#c9b6dd", "var(--note-pink)", "#b9d3d8", "#e8cfa0"];
+  function distributionHtml(f, v) {
+    const bands = (f.bands || []).filter((b) => b.id in v || f.id === "ages");
+    const pct = (b) => Math.max(0, +v[b.id] || 0);
+    const note = f.estimate ? '<small class="estimate">' + t("estimate") + "</small>" : "";
+    if (f.id === "ages") {
+      const top = Math.max(...bands.map(pct), 1);
+      return '<div class="age-bars">' + bands.map((b) =>
+        '<span class="band">' + esc(L(b)) + '</span><span class="bar"><i style="width:' + (pct(b) / top) * 100 + '%"></i></span><span class="pct">' + (pct(b) ? "~" + pct(b) + "%" : "") + "</span>").join("") + "</div>" + note;
+    }
+    // a hand-drawn ring, one slice per band
+    const total = bands.reduce((a, b) => a + pct(b), 0) || 1, R = 26, C = 2 * Math.PI * R;
+    let at = 0;
+    const arcs = bands.map((b, i) => {
+      const len = (pct(b) / total) * C, a = '<circle r="' + R + '" cx="36" cy="36" stroke="' + DIST_FILLS[i % DIST_FILLS.length] +
+        '" stroke-dasharray="' + len + " " + (C - len) + '" stroke-dashoffset="' + -at + '"/>';
+      at += len;
+      return a;
+    }).join("");
+    return '<div class="ring-chart"><svg viewBox="0 0 72 72" aria-hidden="true"><g class="slices" transform="rotate(-90 36 36)">' + arcs + "</g>" +
+      '<circle class="edge" cx="36" cy="36" r="' + (R + 8) + '"/><circle class="edge" cx="36" cy="36" r="' + (R - 8) + '"/></svg><ul>' +
+      bands.map((b, i) => '<li><i style="background:' + DIST_FILLS[i % DIST_FILLS.length] + '"></i>' + esc(L(b)) + " <b>~" + pct(b) + "%</b></li>").join("") + "</ul></div>" + note;
+  }
   function fieldHtml(f, v) {
     const opt = (id) => (f.options || []).find((x) => x.id === id);
     if (SCALES[f.id] && opt(v)) {
@@ -1554,6 +1582,7 @@
         (LD(opt(v)) ? "<small>" + esc(LD(opt(v))) + "</small>" : "") + "</div>";
     }
     switch (f.type) {
+      case "distribution": return distributionHtml(f, v);
       case "text": return '<div class="prose' + (f.id === "vision" ? " vision" : "") + '">' + esc(v).split(/\n{2,}/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>";
       case "line": case "date": return "<p>" + esc(v) + "</p>";
       case "number": return '<p class="big-number">' + esc(v) + "</p>";
@@ -1604,18 +1633,19 @@
         '<svg class="timeline" viewBox="0 0 160 44" aria-hidden="true"><path d="M6 27.5c40-1 90 1 148-.5"/>' + ticks +
         '<path class="lived" d="M' + x(y) + " 27.5H" + x(now) + '"/><circle class="start" cx="' + x(y) + '" cy="27.5" r="4"/><path class="flag" d="M' + x(y) + " 23.5V8l10 3.5-10 3.5\"/></svg></div>");
     }
-    const m = +p.members || 0, r = Math.min(+p.residents || 0, m || Infinity);
+    const m = fits(fieldById.members, p) ? +p.members || 0 : 0, r = fits(fieldById.residents, p) ? Math.min(+p.residents || 0, m || Infinity) : 0;
+    const custom = fieldById.members.label_for && p.categories.some((c) => fieldById.members.label_for[c]);
     if (m || r) {
       // one little figure per person (or per few people for big places); filled ones live there
       const total = m || r, per = total > 60 ? 10 : total > 30 ? 5 : 1, n = Math.ceil(total / per), live = Math.round(r / per);
       const fig = (cls) => '<svg viewBox="0 0 12 20" class="fig ' + cls + '" aria-hidden="true"><circle cx="6" cy="4" r="3"/><path d="M1.5 19v-6.5C1.5 9.5 3.4 8 6 8s4.5 1.5 4.5 4.5V19z"/></svg>';
-      people.push('<div class="glance-tile wide"><h4>' + t("people") + '</h4><p class="since"><b>' + plural(total, t("member"), t("members")) + "</b>" +
+      people.push('<div class="glance-tile wide"><h4>' + (custom ? esc(FL(fieldById.members, p)) : t("people")) + '</h4><p class="since"><b>' + (custom ? total : plural(total, t("member"), t("members"))) + "</b>" +
         (r ? " · " + t("liveThere", r) : "") + '</p><div class="crowd">' + Array.from({ length: n }, (_, i) => fig(i < live ? "lives" : "")).join("") + "</div>" +
-        '<p class="cap">' + (r ? fig("lives") + " " + t("liveHereKey") + " " : "") + fig("") + " " + t("memberKey") + (per > 1 ? " · " + t("perFigure", per) : "") + "</p></div>");
+        '<p class="cap">' + (r ? fig("lives") + " " + t("liveHereKey") + " " : "") + fig("") + " " + (custom ? t("personKey") : t("memberKey")) + (per > 1 ? " · " + t("perFigure", per) : "") + "</p></div>");
     }
-    const flags = ["open_visitors", "open_volunteers", "open_members"].filter((id) => fieldById[id] && typeof p[id] === "boolean");
+    const flags = ["open_visitors", "open_volunteers", "open_members"].filter((id) => fieldById[id] && fits(fieldById[id], p) && typeof p[id] === "boolean");
     if (flags.length) tiles.push('<div class="glance-tile"><h4>' + t("welcomeTitle") + '</h4><div class="stamps">' + flags.map((id, i) =>
-      '<span class="stamp ' + (p[id] ? "yes" : "no") + '" style="--tilt:' + [-4, 3, -2][i] + 'deg">' + (p[id] ? "✓ " : "✗ ") + esc(L(fieldById[id])) + "</span>").join("") + "</div></div>");
+      '<span class="stamp ' + (p[id] ? "yes" : "no") + '" style="--tilt:' + [-4, 3, -2][i] + 'deg">' + (p[id] ? "✓ " : "✗ ") + esc(FL(fieldById[id], p)) + "</span>").join("") + "</div></div>");
     tiles.push(...people);
     return tiles.length ? '<div class="glance">' + tiles.join("") + "</div>" : "";
   }
@@ -1630,15 +1660,18 @@
     const glance = glanceHtml(p, fieldById);
     let body = "", count = 0;
     pr.sections.forEach((sec) => {
-      const fs = sec.fields.filter((f) => !GLANCE.includes(f.id) && filled(p[f.id]) && f.type !== "flag");
+      const fs = sec.fields.filter((f) => !GLANCE.includes(f.id) && fits(f, p) && filled(p[f.id]) && f.type !== "flag");
       if (!fs.length) return;
       count += fs.length;
       // the closed card still shows the drawings of what applies, as a preview
       const peek = fs.flatMap((f) => (f.type === "choice" || f.type === "choices") && (f.options || []).every((o) => ART[o.id]) && !SCALES[f.id] ? [].concat(p[f.id]) : [])
         .concat(sec.id === "offers" ? [...new Set((p.offers || []).map((o) => o.kind))] : []).filter((id) => ART[id]).slice(0, 7);
+      let group = null;
       const tiles = fs.map((f) => {
-        const wide = ["text", "offers", "media"].includes(f.id === "needs" ? "text" : f.type) || ((f.type === "choices" || (f.type === "choice" && !SCALES[f.id])) && (f.options || []).length > 3);
-        return '<div class="tile' + (wide ? " wide" : "") + '"><h4>' + esc(L(f)) + "</h4>" + fieldHtml(f, p[f.id]) + "</div>";
+        // a section can be split in parts, each with a small heading across the card
+        const g = f.group && L(f.group) !== group ? (group = L(f.group)) : null;
+        const wide = ["text", "offers", "media"].includes(f.id === "needs" ? "text" : f.type) || ((f.type === "choices" || (f.type === "choice" && !SCALES[f.id])) && (f.options || []).length > 4);
+        return (g ? '<p class="tile-group">' + esc(g) + "</p>" : "") + '<div class="tile' + (wide ? " wide" : "") + '"><h4>' + esc(FL(f, p)) + "</h4>" + fieldHtml(f, p[f.id]) + "</div>";
       }).join("");
       body += '<details class="card" data-sec="' + esc(sec.id) + '"' + (openSections.has(sec.id) ? " open" : "") + "><summary>" + art("sec-" + sec.id, "sec-art") +
         '<span class="card-title">' + esc(L(sec)) + '</span><span class="peek">' + peek.map((id) => art(id)).join("") + "</span>" +

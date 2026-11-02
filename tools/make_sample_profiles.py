@@ -93,6 +93,35 @@ def options(schema, field):
     raise KeyError(field)
 
 
+def spread(weights, rnd):
+    """Rough percentages from some weights, a little shaken, adding up to 100."""
+    w = {k: max(0, v * rnd.uniform(.6, 1.4)) for k, v in weights.items()}
+    total = sum(w.values()) or 1
+    out = {k: round(v * 100 / total) for k, v in w.items()}
+    out[max(out, key=out.get)] += 100 - sum(out.values())
+    return {k: v for k, v in out.items() if v > 0}
+
+
+def ages(p, rnd):
+    if "school" in p["categories"]:  # children, with their teachers
+        return spread({"0-12": 70, "13-17": 5, "18-29": 6, "30-49": 15, "50-64": 4}, rnd)
+    shape = rnd.choice([
+        {"0-12": 20, "13-17": 8, "18-29": 12, "30-49": 35, "50-64": 15, "65+": 10},  # families
+        {"0-12": 4, "13-17": 2, "18-29": 45, "30-49": 35, "50-64": 10, "65+": 4},    # young adults
+        {"0-12": 5, "13-17": 3, "18-29": 7, "30-49": 20, "50-64": 35, "65+": 30},    # older
+        {"0-12": 14, "13-17": 8, "18-29": 18, "30-49": 24, "50-64": 20, "65+": 16},  # all ages
+    ])
+    return spread(shape, rnd)
+
+
+def gender(rnd):
+    return spread({"women": 50, "men": 45, "nonbinary": rnd.choice([0, 3, 6])}, rnd)
+
+
+def applies(f, p):
+    return not f.get("not_for") or any(c not in f["not_for"] for c in p["categories"])
+
+
 def fill(p, schema, rnd):
     t = BY_TYPE.get(p["categories"][0], BY_TYPE["association"])
     pick = lambda field: rnd.choice(options(schema, field))
@@ -117,16 +146,27 @@ def fill(p, schema, rnd):
     p["open_members"] = rnd.random() < .6
     p["open_visitors"] = rnd.random() < .8
     p["open_volunteers"] = rnd.random() < .6
-    p["how_to_join"] = "Come for a visit weekend first, then a trial period of six months."
+    p["how_to_join"] = ("Come to an open morning, then a trial week with your child." if "school" in p["categories"]
+                        else "Come for a visit weekend first, then a trial period of six months.")
     if level == "medium":
         return
     for f in ("decision_authority", "decision_process", "governance_structure", "economic_model",
-              "social_life", "local_ties", "pets", "substances", "ages"):
+              "social_life", "local_ties", "pets", "substances"):
         p[f] = pick(f)
     for f in ("costs", "vehicles", "food", "support", "practices", "accessibility"):
         p[f] = some(f)
+    p["ages"] = ages(p, rnd)
+    p["gender"] = gender(rnd)
     if rnd.random() < .4:
         p["spirituality"] = rnd.choice(["Meditation in the morning", "No shared practice", "Seasonal celebrations"])
+
+
+def drop_unfit(p, schema):
+    """Leave out what does not apply to this kind of place (a school has no pets policy)."""
+    for s in schema["sections"]:
+        for f in s["fields"]:
+            if not applies(f, p):
+                p.pop(f["id"], None)
 
 
 def main():
@@ -146,6 +186,7 @@ def main():
         for p in data["places"]:
             if p.get("location"):
                 fill(p, schema, rnd)
+                drop_unfit(p, schema)
     with open(PLACES, "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
