@@ -349,7 +349,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .place.has-way.car .name-tag .sample { stroke: var(--way-car); }
 .place.has-way.bike .name-tag .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
 .place.has-way.foot .name-tag .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
-.place.has-way.train .name-tag .sample { stroke: var(--way-train); }
 .name-tag rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .name-tag text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
 .place.selected .name-tag text { font-weight: 700; }
@@ -390,15 +389,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .credits a { color: inherit; }
 
 /* ---------- connections between places ---------- */
-:root { --way-car: #2f5277; --way-bike: #3d6b34; --way-foot: #9b3b22; --way-train: #6b4277; }
+:root { --way-car: #2f5277; --way-bike: #3d6b34; --way-foot: #9b3b22; }
 .routes .route-line { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .routes.car .route-line { stroke: var(--way-car); stroke-width: 1.8; }
 .routes.bike .route-line { stroke: var(--way-bike); stroke-dasharray: 7 4; }
 .routes.foot .route-line { stroke: var(--way-foot); stroke-dasharray: .5 4.5; stroke-width: 2.4; }
-/* a train line: a solid line with the sleepers drawn across it, like a railway on a map */
-.routes.train .route-line { stroke: var(--way-train); stroke-width: 1.6; }
-.routes .route-ties { fill: none; stroke: var(--way-train); stroke-width: 6; stroke-dasharray: 1.2 5; stroke-linecap: butt; opacity: .8; }
-.routes .route.lit .route-ties { stroke-width: 7.5; }
 .routes .route-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
 .routes.has-selection .route { opacity: .3; }
 .routes.has-selection .route.lit { opacity: 1; }
@@ -408,14 +403,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 #map.moving .routes .route-hit { pointer-events: none; }
 .ways-hidden { opacity: 0; transition: opacity .25s; }
 .ways-hidden .route-hit { pointer-events: none; }
-
-.note .station-icon { fill: none; stroke: currentColor; stroke-width: 1.6; }
 .route-time rect { fill: var(--page); stroke: var(--ink); stroke-width: .9; }
 .route-time .sample { fill: none; stroke-width: 2; stroke-linecap: round; }
 .route-time.car .sample { stroke: var(--way-car); }
 .route-time.bike .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
 .route-time.foot .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
-.route-time.train .sample { stroke: var(--way-train); }
 .route-time text { font-family: var(--pen); font-weight: 400; font-size: 12px; fill: var(--ink); }
 
 /* the swatch: which way of travelling to draw */
@@ -455,7 +447,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .modes .swatch.car { stroke: var(--way-car); }
 .modes .swatch.bike { stroke: var(--way-bike); stroke-dasharray: 5 3; }
 .modes .swatch.foot { stroke: var(--way-foot); stroke-dasharray: .5 3.5; stroke-width: 2.6; }
-.modes .swatch.train { stroke: var(--way-train); stroke-width: 2.2; }
 .note .ways-title { margin: 10px 0 2px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
 .note ul.ways { margin: 0; padding: 0; list-style: none; font-size: 14px; }
 .note ul.ways li { display: flex; justify-content: space-between; gap: 8px; }
@@ -520,7 +511,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .reach.car .reach-line { stroke: var(--way-car); }
 .reach.bike .reach-line { stroke: var(--way-bike); }
 .reach.foot .reach-line { stroke: var(--way-foot); }
-.reach.train .reach-line { stroke: var(--way-train); }
 .reach .reach-edge { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: grab; touch-action: none; }
 .reach .reach-edge:hover, .reach .reach-edge:focus-visible { stroke: rgba(27, 26, 23, .12); }
 #map.dragging-reach, #map.dragging-reach .reach-edge { cursor: grabbing; }
@@ -537,7 +527,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .reach-tag.car .sample { stroke: var(--way-car); }
 .reach-tag.bike .sample { stroke: var(--way-bike); stroke-dasharray: 4 2.5; }
 .reach-tag.foot .sample { stroke: var(--way-foot); stroke-dasharray: .5 3; stroke-width: 2.6; }
-.reach-tag.train .sample { stroke: var(--way-train); }
 .note .ways-title .mode-icon { width: 18px; height: 18px; vertical-align: -4px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .note ul.ways .who { display: flex; flex-direction: column; min-width: 0; }
 .note ul.ways small { color: var(--ink-soft); font-size: 12px; line-height: 1.1; margin-bottom: 2px; }
@@ -576,4 +565,3 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline
 .route-tip .swatch.car { stroke: var(--way-car); }
 .route-tip .swatch.bike { stroke: var(--way-bike); stroke-dasharray: 5 3; }
 .route-tip .swatch.foot { stroke: var(--way-foot); stroke-dasharray: .5 3.5; stroke-width: 2.6; }
-.route-tip .swatch.train { stroke: var(--way-train); stroke-width: 2.2; }

@@ -59,9 +59,6 @@
       noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
       nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
-      stationsTitle: "Nearest stations", station: "Train station", halt: "Train stop", noStationWay: (verb) => "no way " + verb,
-      train: "Train", byTrain: "by train", trainVia: (a, b) => "train " + a + " → " + b,
-      trainNote: "Train times are estimates from the length of the tracks, with a wait at the station: OpenStreetMap has no timetables.",
     },
     es: {
       tagline: "Espacios conscientes a nuestro alrededor",
@@ -84,9 +81,6 @@
       noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
       nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
-      stationsTitle: "Estaciones más cercanas", station: "Estación de tren", halt: "Apeadero", noStationWay: (verb) => "sin camino " + verb,
-      train: "Tren", byTrain: "en tren", trainVia: (a, b) => "tren " + a + " → " + b,
-      trainNote: "Los tiempos en tren son aproximados, según la longitud de las vías y con una espera en la estación: OpenStreetMap no tiene horarios.",
     },
   };
   const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
@@ -136,7 +130,7 @@
     connections: null,
     // how far the reach circle goes, per way of travelling: by time (minutes) or distance (km);
     // value null = just far enough to take in the selected place's direct connections
-    reach: { car: { kind: "time", value: null }, train: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
+    reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
     hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
   };
@@ -338,12 +332,10 @@
   // ---------- connections: a graph of places, each edge following the real way there ----------
   const MODES = {
     car: { get label() { return t("car"); }, get verb() { return t("byCar"); } },
-    train: { get label() { return t("train"); }, get verb() { return t("byTrain"); } },
     bike: { get label() { return t("bike"); }, get verb() { return t("byBike"); } },
     foot: { get label() { return t("foot"); }, get verb() { return t("onFoot"); } },
   };
   const MODE_ICONS = {
-    train: '<rect x="6.5" y="3" width="11" height="13.5" rx="3"/><path d="M6.5 10h11M9 7h6"/><circle cx="9.6" cy="13.3" r=".6"/><circle cx="14.4" cy="13.3" r=".6"/><path d="M9.5 16.5l-2.2 4M14.5 16.5l2.2 4M8.3 19h7.4"/>',
     car: '<path d="M3 15.5v-3l2.2-4.3h10l3.8 4.3H21v3"/><path d="M5.6 12.2h13.2"/><circle cx="7.5" cy="16" r="1.9"/><circle cx="16.8" cy="16" r="1.9"/>',
     bike: '<circle cx="6" cy="15.5" r="3.6"/><circle cx="18" cy="15.5" r="3.6"/><path d="M6 15.5l4-6.5h6l2 6.5M10 9l2.6 6.5H6M14.5 6.5h2.5"/>',
     foot: '<circle cx="12.5" cy="4.6" r="1.8"/><path d="M12 7.5l-1.5 6 3.3 3 .9 5M10.5 13.5l-2.4 3.4-1.4 4.6M11.5 9l-3.3 2.3M12.4 9l3.3 2.4 2.1-.4"/>',
@@ -354,45 +346,12 @@
     return h + " " + t("h") + (m ? " " + m : "");
   }
   // a way is shown when its route is no longer than the limit set for that mode
-  // (trains have no limit: a train trip is shown however far it goes)
-  function routeOf(e, mode) { return mode && e[mode] && !(e[mode].km > settings.limit[mode]) ? e[mode] : null; }
+  function routeOf(e, mode) { return mode && e[mode] && e[mode].km <= settings.limit[mode] ? e[mode] : null; }
   // the way, from the place itself to the place itself (routes start on the nearest road)
   function routeCoords(e, r) {
     const a = state.placeById[e.a], b = state.placeById[e.b];
     return [lnglat(a)].concat(r.path, [lnglat(b)]);
   }
-  // ---------- train stations ----------
-  // Each train trip becomes the "train" way of the edge between its two places. Places further
-  // apart than the graph joins get an edge of their own, drawn only when one end is selected.
-  function addTrainTrips(c, st) {
-    const byPair = new Map(c.edges.map((e) => [e.a + "|" + e.b, e]));
-    (st.trips || []).forEach((tr) => {
-      let e = byPair.get(tr.a + "|" + tr.b), flip = false;
-      if (!e) { e = byPair.get(tr.b + "|" + tr.a); flip = !!e; }
-      const way = flip ? Object.assign({}, tr, { path: tr.path.slice().reverse() }) : tr;
-      if (!e) {
-        const a = state.placeById[tr.a], b = state.placeById[tr.b];
-        if (!a || !b) return;
-        e = { a: tr.a, b: tr.b, straight_km: Math.round(d3.geoDistance(lnglat(a), lnglat(b)) * 6371 * 10) / 10, trainOnly: true };
-        c.edges.push(e);
-      }
-      e.train = way;
-    });
-    delete routeStats.train;
-  }
-  // a small train seen from the front, drawn with the same pen as the place icons
-  const STATION_ICON = '<rect x="6.5" y="3" width="11" height="13.5" rx="3"/><path d="M6.5 10h11M9 7h6"/><circle cx="9.6" cy="13.3" r=".6"/><circle cx="14.4" cy="13.3" r=".6"/><path d="M9.5 16.5l-2.2 4M14.5 16.5l2.2 4M8.3 19h7.4"/>';
-  // the stations near a place, nearest first: by the time it takes in the chosen way of travelling
-  // (when there is a way that short), otherwise by straight-line distance
-  function stationsNear(id) {
-    const S = state.stations;
-    if (!S) return [];
-    // to take the train you walk to the station, or cycle when it is more than 20 minutes on foot
-    const leg = (a) => state.mode === "train" ? (a.foot && a.foot.min <= 20 ? a.foot : a.bike || a.foot)
-      : state.mode && a[state.mode] && a[state.mode].km <= settings.limit[state.mode] ? a[state.mode] : null;
-    return S.access.filter((a) => a.place === id && S.byId[a.station]).map((a) => ({ s: S.byId[a.station], a, r: leg(a) || null })).sort((x, y) => (x.r && y.r ? x.r.min - y.r.min : x.r ? -1 : y.r ? 1 : x.a.straight_km - y.a.straight_km));
-  }
-
   function drawRoutes() {
     const g = layers.routes;
     if (!g) return;
@@ -411,10 +370,7 @@
       if (!d) return;
       const lit = reach ? [e.a, e.b].some((id) => reach.has(id) && reach.get(id).e === e)
         : state.selectedId && (e.a === state.selectedId || e.b === state.selectedId);
-      // train trips between far-apart places are drawn only for the selected place
-      if (e.trainOnly && !lit) return;
       const grp = el("g", { class: "route" + (lit ? " lit" : "") }, g);
-      if (mode === "train") el("path", Object.assign({ d, class: "route-ties" }, ns), grp);
       el("path", Object.assign({ d, class: "route-line" }, ns), grp);
       el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
       grp.dataset.tip = JSON.stringify([a.name, b.name, fmtTime(r.min), r.km + " " + t("km")]);
@@ -431,8 +387,6 @@
       const cur = todo.shift();
       if (done.has(cur)) continue;
       done.add(cur);
-      // a train trip already goes all the way; trips are not chained through other places
-      if (mode === "train" && cur !== id) continue;
       state.connections.edges.forEach((e) => {
         if (e.a !== cur && e.b !== cur) return;
         const r = routeOf(e, mode);
@@ -448,7 +402,7 @@
   }
   // the default reach: a usual trip for this way of travelling (car 30 min, bike or walk 1 h),
   // or just far enough for the nearest connection when nothing is that close
-  const REACH_DEFAULT = { car: { time: 30, distance: 25 }, train: { time: 60, distance: 40 }, bike: { time: 60, distance: 15 }, foot: { time: 60, distance: 5 } };
+  const REACH_DEFAULT = { car: { time: 30, distance: 25 }, bike: { time: 60, distance: 15 }, foot: { time: 60, distance: 5 } };
   function defaultReach(id, mode, kind) {
     const cs = connectionsOf(id, mode), base = REACH_DEFAULT[mode][kind];
     if (!cs.length) return base;
@@ -1362,21 +1316,7 @@
     noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
   }
 
-  function stationsNote(p) {
-    const near = stationsNear(p.id).slice(0, 3);
-    if (!near.length) return "";
-    const verb = state.mode ? MODES[state.mode].verb : "";
-    return '<h3 class="ways-title">' + t("stationsTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon station-icon" aria-hidden="true">' + STATION_ICON + "</svg></h3>" +
-      '<ul class="ways">' + near.map((n) =>
-        '<li><span class="who">' + esc(n.s.name) + "</span><span>" +
-        (n.r ? fmtTime(n.r.min) + " · " + n.r.km + " " + t("km") : n.a.straight_km + " " + t("km") + (verb ? " · " + esc(t("noStationWay", verb)) : "")) +
-        "</span></li>").join("") + "</ul>";
-  }
-
   function connectionsNote(p) {
-    return waysNote(p) + (state.mode === "train" ? stationsNote(p) : "");
-  }
-  function waysNote(p) {
     if (!state.mode || !state.connections) return "";
     const r = reachSetting(), reach = currentReach();
     const title = '<h3 class="ways-title">' + t("nearbyTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>";
@@ -1384,18 +1324,10 @@
     if (!list.length) return title + '<p class="ways">' + t("reachNone") + "</p>";
     return title + '<ul class="ways">' + list.map(([id, info]) => {
       const o = state.placeById[id], via = info.prev !== p.id ? state.placeById[info.prev] : null;
-      const tr = state.mode === "train" && info.e && info.e.train, S = state.stations && state.stations.byId;
-      const from = tr && S[tr.a === p.id ? tr.from : tr.to], to = tr && S[tr.a === p.id ? tr.to : tr.from];
       return '<li><span class="who"><button type="button" data-go="' + esc(id) + '">' + esc(o.name) + "</button>" +
-        (from && to ? "<small>" + esc(t("trainVia", from.name, to.name)) + "</small>" : via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
+        (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
         "<span>" + fmtTime(info.min) + " · " + info.km + " " + t("km") + "</span></li>";
-    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + (state.mode === "train" ? " " + t("trainNote") : "") + "</p>";
-  }
-
-  // rewrite the note of the selected place, e.g. when more data arrives
-  function refreshNote() {
-    const p = state.selectedId && state.placeById[state.selectedId];
-    if (p) showPlace(p);
+    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>";
   }
 
   function select(id, opts) {
@@ -1427,7 +1359,6 @@
   svg.addEventListener("click", (ev) => {
     const placeEl = ev.target.closest(".place");
     if (placeEl) return select(placeEl.dataset.id);
-    if (ev.target.closest(".station")) return; // a station only shows its name
     const cluster = ev.target.closest(".cluster");
     if (cluster && cluster.dataset.ids) return zoomToPlaces(cluster.dataset.ids.split(" "));
     if (cluster && state.countryById[cluster.dataset.country]) {
@@ -1518,10 +1449,7 @@
     applyStaticText();
     renderModes();
     // the connections are small; draw them as soon as they arrive
-    // the connections are small; draw them as soon as they arrive, and add the train trips to them
-    const conn = getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); refreshNote(); return c; });
-    const stat = getJSON("data/stations.json").then((st) => { st.byId = Object.fromEntries(st.stations.map((x) => [x.id, x])); state.stations = st; return st; });
-    Promise.all([conn, stat]).then(([c, st]) => { addTrainTrips(c, st); drawRoutes(); scheduleMarks(); refreshNote(); }).catch(() => {});
+    getJSON("data/connections.json").then((c) => { state.connections = c; drawRoutes(); scheduleMarks(); }).catch(() => {});
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
