@@ -57,8 +57,20 @@
       nearby: (verb) => "Nearby, " + verb, noneNearby: (verb) => "No nearby places to reach " + verb + ".",
       settings: "Settings", language: "Language", showWays: "Show ways up to",
       noLimit: "no limit", km: "km", min: "min", h: "h", done: "Done",
+      pin: "Pin this place: the ways and the circle stay here while you look at other places", unpin: "Unpin",
+      pinned: "Pinned", fromPinned: "From", pinnedHere: "Pinned: the ways start here while you look around.",
+      since: (y) => "since " + y, yearsOld: (n) => n + (n === 1 ? " year" : " years"), people: "People", member: "member", members: "members",
+      liveThere: (n) => n + " live there", liveHereKey: "lives there", memberKey: "member", personKey: "person", perFigure: (n) => "each figure is " + n + " people",
+      welcomeTitle: "Who is welcome", openAll: "Open all sections", closeAll: "Close all sections",
       nearbyTitle: "Nearby", via: (name) => "via " + name, reachNone: "Nothing within reach. Drag the dashed circle to reach further.",
       reachHelp: "Drag the circle to reach further or less far. Tap the label to switch between time and distance.",
+      search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
+      openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
+      sampleNote: "Sample details, made up for testing. They are not real information about this place.",
+      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", or: " or ", goodToKnow: "Good to know", yes: "yes", no: "no", clearAll: "Clear all", editSearch: "Change",
+      showPlaces: (n) => "Show " + n + (n === 1 ? " place" : " places"),
+      offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
+      found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
     es: {
       tagline: "Espacios conscientes a nuestro alrededor",
@@ -79,8 +91,20 @@
       nearby: (verb) => "Cerca, " + verb, noneNearby: (verb) => "No hay lugares cercanos " + verb + ".",
       settings: "Ajustes", language: "Idioma", showWays: "Mostrar caminos hasta",
       noLimit: "sin límite", km: "km", min: "min", h: "h", done: "Listo",
+      pin: "Fijar este lugar: los caminos y el círculo se quedan aquí mientras miras otros lugares", unpin: "Quitar",
+      pinned: "Fijado", fromPinned: "Desde", pinnedHere: "Fijado: los caminos salen de aquí mientras miras alrededor.",
+      since: (y) => "desde " + y, yearsOld: (n) => n + (n === 1 ? " año" : " años"), people: "Personas", member: "miembro", members: "miembros",
+      liveThere: (n) => n + " viven allí", liveHereKey: "vive allí", memberKey: "miembro", personKey: "persona", perFigure: (n) => "cada figura son " + n + " personas",
+      welcomeTitle: "Quién es bienvenido", openAll: "Abrir todas las secciones", closeAll: "Cerrar todas las secciones",
       nearbyTitle: "Cerca", via: (name) => "por " + name, reachNone: "Nada al alcance. Arrastra el círculo discontinuo para llegar más lejos.",
       reachHelp: "Arrastra el círculo para llegar más o menos lejos. Toca la etiqueta para cambiar entre tiempo y distancia.",
+      search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
+      openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
+      sampleNote: "Datos de ejemplo, inventados para probar. No es información real sobre este lugar.",
+      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", or: " o ", goodToKnow: "Bueno saber", yes: "sí", no: "no", clearAll: "Borrar todo", editSearch: "Cambiar",
+      showPlaces: (n) => "Ver " + n + (n === 1 ? " lugar" : " lugares"),
+      offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
+      found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
   };
   const LIMITS = { car: { def: Infinity, max: 80 }, bike: { def: 60, max: 80 }, foot: { def: 30, max: 50 } };
@@ -125,6 +149,7 @@
     focusCountry: null,    // ISO3
     focusRegion: null,     // region id
     selectedId: null,
+    pinnedId: (() => { try { return localStorage.getItem("roots-pin") || null; } catch (err) { return null; } })(),
     hidden: new Set(),
     placeById: {},
     connections: null,
@@ -132,7 +157,8 @@
     // value null = just far enough to take in the selected place's direct connections
     reach: { car: { kind: "time", value: null }, bike: { kind: "time", value: null }, foot: { kind: "time", value: null } },
     mode: (() => { try { const m = localStorage.getItem("roots-mode"); return m === "off" ? null : m || "bike"; } catch (err) { return "bike"; } })(),
-    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)); },
+    query: "", intent: null, themes: new Set(), lang: null, basics: new Set(), offerKinds: [], offerKindById: {}, // the search box and the offer chip picked under it
+    hiddenPlace(p) { return p.categories.every((c) => this.hidden.has(c)) || !matchesSearch(p); },
   };
 
   let W = 900, H = 600, projection, path, zoom, transform = d3.zoomIdentity;
@@ -357,7 +383,7 @@
     if (!g) return;
     g.innerHTML = "";
     const mode = state.mode, data = state.connections;
-    g.setAttribute("class", "routes " + (mode || "") + (state.selectedId ? " has-selection" : ""));
+    g.setAttribute("class", "routes " + (mode || "") + (originId() ? " has-selection" : ""));
     if (!mode || !data) return;
     const ns = { "vector-effect": "non-scaling-stroke" };
     const reach = currentReach();
@@ -369,7 +395,7 @@
       const d = path({ type: "LineString", coordinates: routeCoords(e, r) });
       if (!d) return;
       const lit = reach ? [e.a, e.b].some((id) => reach.has(id) && reach.get(id).e === e)
-        : state.selectedId && (e.a === state.selectedId || e.b === state.selectedId);
+        : originId() && (e.a === originId() || e.b === originId());
       const grp = el("g", { class: "route" + (lit ? " lit" : "") }, g);
       el("path", Object.assign({ d, class: "route-line" }, ns), grp);
       el("path", Object.assign({ d, class: "route-hit" }, ns), grp);
@@ -378,6 +404,8 @@
   }
   // Everything reachable from one place within a time or a distance, also through other places
   // (Dijkstra over the connections). Returns id -> { min, km, prev, e } for each place in reach.
+  // the place the ways and the circle start from: the pinned place, or else the selected one
+  const originId = () => state.pinnedId || state.selectedId;
   function reachFrom(id, mode, kind, limit) {
     const w = (r) => (kind === "time" ? r.min : r.km);
     const best = new Map([[id, { min: 0, km: 0, prev: null, e: null }]]);
@@ -410,13 +438,13 @@
     return Math.max(base, kind === "time" ? Math.ceil(near / 5) * 5 : Math.ceil(near));
   }
   function reachSetting() {
-    if (!state.selectedId || !state.mode || !state.connections) return null;
+    if (!originId() || !state.mode || !state.connections) return null;
     const pref = state.reach[state.mode];
-    return { kind: pref.kind, value: pref.value != null ? pref.value : defaultReach(state.selectedId, state.mode, pref.kind) };
+    return { kind: pref.kind, value: pref.value != null ? pref.value : defaultReach(originId(), state.mode, pref.kind) };
   }
   function currentReach() {
     const r = reachSetting();
-    return r && reachFrom(state.selectedId, state.mode, r.kind, r.value);
+    return r && reachFrom(originId(), state.mode, r.kind, r.value);
   }
   // The circle is drawn as the crow flies, sized by how this mode's real routes usually go here:
   // the typical straight-line km covered per minute, and how much longer a route usually is than
@@ -525,6 +553,7 @@
   // after a language change, every piece of text is written again
   function refreshAll() {
     applyStaticText();
+    renderSearch();
     renderModes();
     renderHeading();
     renderList();
@@ -567,7 +596,7 @@
   }
   let reachDrag = null;
   function drawReachCircle(g, r, boxes) {
-    const p = state.placeById[state.selectedId];
+    const p = state.placeById[originId()];
     const [cx, cy] = transform.apply(projection(lnglat(p)));
     const rad = Math.max(14, reachRadiusKm(r) * pxPerKm(p));
     const grp = el("g", { class: "reach " + state.mode }, null);
@@ -720,7 +749,7 @@
     // a place under the swatch or the zoom buttons is treated like one just off the edge of the map
     const underPanel = (x, y) => panelBoxes.some((b) => x > b.x - 6 && x < b.x + b.w + 6 && y > b.y - 6 && y < b.y + b.h + 6);
 
-    const visible = state.places.filter((p) => p.location && !p.categories.every((c) => state.hidden.has(c)));
+    const visible = state.places.filter((p) => p.location && !state.hiddenPlace(p));
 
     // 0. zoomed far out: one circled count per country instead of every icon
     if (k < ADMIN_ZOOM) {
@@ -792,10 +821,10 @@
     const parent = pts.map((_, i) => i);
     const root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i])));
     pts.forEach((a, i) => {
-      if (a.p.id === state.selectedId) return;
+      if (a.p.id === state.selectedId || a.p.id === state.pinnedId) return;
       for (let j = i + 1; j < pts.length; j++) {
         const b = pts[j];
-        if (b.p.id !== state.selectedId && Math.hypot(a.x0 - b.x0, a.y0 - b.y0) < reach) parent[root(j)] = root(i);
+        if (b.p.id !== state.selectedId && b.p.id !== state.pinnedId && Math.hypot(a.x0 - b.x0, a.y0 - b.y0) < reach) parent[root(j)] = root(i);
       }
     });
     const byRoot = new Map();
@@ -848,7 +877,7 @@
             if (d < 0.5) { ux = Math.cos(i * 2.4); uy = Math.sin(i * 2.4); d = 1; }
             n.x = q.x0 + (ux / d) * size * 0.6; n.y = q.y0 + (uy / d) * size * 0.6;
           } else { n.x = q.x0; n.y = q.y0; }
-          if (q.p.id === state.selectedId) { n.fx = q.x0; n.fy = q.y0; }
+          if (q.p.id === state.selectedId || q.p.id === state.pinnedId) { n.fx = q.x0; n.fy = q.y0; }
           nodes.push(n);
         });
       });
@@ -965,7 +994,7 @@
     });
 
     const reachNow = currentReach(), reachSet = reachSetting();
-    const tripTo = reachSet && reachFrom(state.selectedId, state.mode, "time", Infinity);
+    const tripTo = reachSet && reachFrom(originId(), state.mode, "time", Infinity);
     // 2. draw the icons. Each one glides from where it was last shown to its new spot, and icons
     //    that join a numbered circle glide into it and fade, so nothing jumps while zooming.
     const prev = anims;
@@ -989,12 +1018,16 @@
         const ig = el("g", { class: "icon", transform: "translate(" + (it.box.x + i * size) + " " + it.box.y + ") scale(" + size / 24 + ")" }, body);
         ig.innerHTML = ICONS[c] || ICONS["friendly-house"];
       });
+      if (p.id === state.pinnedId) { // a drawing pin stuck in the top of the icon
+        const pin = el("g", { class: "pin-mark", transform: "translate(" + (it.box.x + it.box.w - 6) + " " + (it.box.y - 14) + ")" }, body);
+        pin.innerHTML = PIN_SVG;
+      }
       return body;
     };
     placed.forEach((it) => {
       const p = it.p;
       const grp = el("g", {
-        class: "place" + (state.selectedId === p.id ? " selected" : "") + (reachNow && !reachNow.has(p.id) ? " far" : ""),
+        class: "place" + (state.selectedId === p.id ? " selected" : "") + (state.pinnedId === p.id ? " pinned" : "") + (reachNow && !reachNow.has(p.id) ? " far" : ""),
         tabindex: "0", role: "button", "aria-label": p.name, "data-id": p.id,
       }, g);
       // a dot on the real spot and a pen line that stops at the icon's edge (shown when moved aside)
@@ -1005,15 +1038,15 @@
       // With a place selected, every other place's tag also tells the whole trip there. Inside the
       // circle the way's label already gives the time (or the distance), so the tag adds the other
       // one; outside the circle it gives both.
-      const inReach = reachNow && state.selectedId !== p.id && reachNow.get(p.id);
-      const trip = inReach || (tripTo && state.selectedId !== p.id && tripTo.get(p.id));
+      const inReach = reachNow && originId() !== p.id && reachNow.get(p.id);
+      const trip = inReach || (tripTo && originId() !== p.id && tripTo.get(p.id));
       const tripFull = trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "";
       const tripText = !trip ? "" : !inReach ? tripFull : reachSet.kind === "time" ? trip.km + " " + t("km") : fmtTime(trip.min);
       const nameW = textWidth(p.name, (state.selectedId === p.id ? "700" : "400") + " 12px Kalam, cursive") + 12;
       const tw = trip ? nameW + 22 + textWidth(tripText, "400 12px Kalam, cursive") + 6 : textWidth(p.name, "700 12px Kalam, cursive") + 12;
       const right = it.box.x + it.box.w + 4 + tw < W;
       const tx = right ? it.box.x + it.box.w + 4 : it.box.x - 4 - tw;
-      if (state.selectedId === p.id) boxes.push({ x: tx, y: it.y - 10, w: tw, h: 20 }); // its name is always shown
+      if (state.selectedId === p.id || state.pinnedId === p.id) boxes.push({ x: tx, y: it.y - 10, w: tw, h: 20 }); // its name is always shown
       const tag = el("g", { class: "name-tag" }, body);
       const tagRect = el("rect", { x: tx, y: it.y - 10, width: tw, height: 20, rx: 3 }, tag);
       const tagText = el("text", { x: tx + 6, y: it.y + 4 }, tag);
@@ -1075,7 +1108,7 @@
     }
     // 2b. along each way used to reach places in the circle: the total time (or distance) to its far end
     if (reachNow && k >= ROUTE_ZOOM) {
-      [...reachNow.entries()].filter(([id]) => id !== state.selectedId).map(([id, info]) => ({
+      [...reachNow.entries()].filter(([id]) => id !== originId()).map(([id, info]) => ({
         other: state.placeById[id], e: info.e, r: routeOf(info.e, state.mode), info,
       })).forEach((c) => {
         const pts = routeCoords(c.e, c.r).map((q) => transform.apply(projection(q)));
@@ -1237,6 +1270,7 @@
     if (r) title = r.properties.name;
     // the name of the area, with how many places it has in a pen-drawn circle
     const n = placesInFocus().length;
+    renderPinChip();
     mapTitleEl.innerHTML = '<span class="title-name">' + esc(title) + "</span>" + (n ? ' <span class="title-count" title="' + t("placesOnMap", n) + '">' + n + "</span>" : "");
     crumbsEl.innerHTML = "";
     if (c) crumbs.forEach((cr) => {
@@ -1262,10 +1296,140 @@
     return r ? r.properties.name : c ? countryName(c) : t("theWorldIn");
   }
 
+  // ---------- search: by name, type, town, offer or description; accents and case don't matter ----------
+  const fold = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const offerKindLabel = (k) => (k ? (settings.lang === "es" && k.es) || k.en : "");
+  function haystack(p) {
+    const cats = p.categories.map((c) => state.catById[c]).filter(Boolean).flatMap((c) => [c.label_en, c.label_es, c.label_it]);
+    const offers = (p.offers || []).flatMap((o) => { const k = state.offerKindById[o.kind]; return [o.what, k && k.en, k && k.es]; });
+    return fold([p.name, p.near, p.description].concat(cats, offers).join(" "));
+  }
+  // the chips under the search box: what you would like to do, a broad theme, a language
+  const searchCfg = () => (state.profile && state.profile.search) || { intents: [] };
+  const intentById = (id) => searchCfg().intents.find((x) => x.id === id);
+  const basicById = (id) => (searchCfg().basics || []).find((x) => x.id === id);
+  function fitsIntent(p, it) {
+    return (it.offers || []).some((k) => (p.offers || []).some((o) => o.kind === k)) ||
+      (it.flags || []).some((f) => p[f] === true) || (it.categories || []).some((c) => p.categories.includes(c));
+  }
+  const themeField = () => { const id = searchCfg().themes; return id && state.profile.sections.flatMap((s) => s.fields).find((f) => f.id === id); };
+  function matchesSearch(p) {
+    const it = state.intent && intentById(state.intent);
+    if (it && !fitsIntent(p, it)) return false;
+    // several themes: a place fits when it has any of them, so picking more shows more, not less
+    if (state.themes.size && !(p[searchCfg().themes] || []).some((x) => state.themes.has(x))) return false;
+    if (state.lang && !(p[searchCfg().languages] || []).includes(state.lang)) return false;
+    // "good to know": every basic picked must be a clear yes for the place
+    for (const id of state.basics) { const bc = basicById(id); if (bc && !bc.values.includes(p[bc.field])) return false; }
+    const words = fold(state.query).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const h = p._hay || (p._hay = haystack(p));
+    return words.every((w) => h.includes(w));
+  }
+  const searching = () => !!(state.query.trim() || state.intent || state.themes.size || state.lang || state.basics.size);
+  const clearSearch = () => { searchEl.value = state.query = ""; state.intent = state.lang = null; state.themes.clear(); state.basics.clear(); searchChanged(); };
+  // what matched, shown under the name in the list: the offers that fit the search
+  function matchHint(p) {
+    const words = fold(state.query).split(/\s+/).filter(Boolean);
+    const it = state.intent && intentById(state.intent);
+    const hits = (p.offers || []).filter((o) => (!it || !it.offers || it.offers.includes(o.kind)) &&
+      (!words.length || words.some((w) => fold(o.what + " " + offerKindLabel(state.offerKindById[o.kind])).includes(w))));
+    return hits.map((o) => o.what).join(" · ");
+  }
+  const searchEl = $("search"), chipsEl = $("offer-chips"), searchBtn = $("search-btn"), finderEl = $("finder");
+  function toggleFinder(open) {
+    const show = open === undefined ? finderEl.hidden : open;
+    if (show && !settingsEl.hidden) toggleSettings(false);
+    finderEl.hidden = !show;
+    searchBtn.setAttribute("aria-expanded", String(show));
+    if (show) searchEl.focus(); else searchBtn.focus();
+  }
+  searchBtn.addEventListener("click", () => toggleFinder());
+  $("finder-done").addEventListener("click", () => toggleFinder(false));
+  $("finder-reset").addEventListener("click", () => { clearSearch(); searchEl.focus(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !finderEl.hidden && ev.target !== searchEl) toggleFinder(false); });
+  document.addEventListener("pointerdown", (ev) => {
+    if (!finderEl.hidden && !finderEl.contains(ev.target) && !searchBtn.contains(ev.target)) toggleFinder(false);
+  });
+  function renderSearch() {
+    searchEl.placeholder = t("search");
+    searchEl.setAttribute("aria-label", t("searchLabel"));
+    $("search-clear").setAttribute("aria-label", t("clearSearch"));
+    $("search-clear").hidden = !state.query.trim();
+    // the search icon shows how many filters are on, so a closed search is never forgotten
+    const nOn = (state.query.trim() ? 1 : 0) + (state.intent ? 1 : 0) + state.themes.size + state.basics.size + (state.lang ? 1 : 0);
+    $("search-count").hidden = !nOn;
+    $("search-count").textContent = nOn || "";
+    searchBtn.setAttribute("aria-label", t("searchLabel") + (nOn ? " (" + nOn + ")" : ""));
+    $("finder-reset").textContent = t("clearAll");
+    $("finder-reset").hidden = !nOn;
+    // only chips that would find something
+    const located = state.places.filter((p) => p.location);
+    const intents = searchCfg().intents.filter((it) => located.some((p) => fitsIntent(p, it)));
+    const tf = themeField(), themes = tf ? tf.options.filter((o) => located.some((p) => (p[tf.id] || []).includes(o.id))) : [];
+    const basics = (searchCfg().basics || []).filter((bc) => located.some((p) => bc.values.includes(p[bc.field])));
+    const langs = [...new Set(located.flatMap((p) => p[searchCfg().languages] || []))].sort();
+    chipsEl.hidden = !intents.length && !themes.length;
+    const chip = (kind, id, label, on, icon) => '<button type="button" data-' + kind + '="' + esc(id) + '" aria-pressed="' + on + '">' + (icon || "") + esc(label) + "</button>";
+    chipsEl.innerHTML =
+      (intents.length ? '<div class="chip-row"><span class="chips-title">' + t("wantTo") + "</span>" + intents.map((it) => chip("intent", it.id, L(it), state.intent === it.id)).join("") + "</div>" : "") +
+      (themes.length ? '<div class="chip-row"><span class="chips-title">' + t("themes") + "</span>" + themes.map((o) => chip("theme", o.id, L(o), state.themes.has(o.id), art(o.id, "chip-art"))).join("") + "</div>" : "") +
+      (basics.length ? '<div class="chip-row"><span class="chips-title">' + t("goodToKnow") + "</span>" + basics.map((bc) => chip("basic", bc.id, L(bc), state.basics.has(bc.id))).join("") + "</div>" : "") +
+      (langs.length > 1 ? '<div class="chip-row"><span class="chips-title">' + t("speaks") + "</span>" + langs.map((l) => chip("speaks", l, l, state.lang === l)).join("") + "</div>" : "");
+    chipsEl.querySelectorAll("[data-intent]").forEach((b) => b.addEventListener("click", () => { state.intent = state.intent === b.dataset.intent ? null : b.dataset.intent; searchChanged(); }));
+    chipsEl.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.theme;
+      if (state.themes.has(id)) state.themes.delete(id); else state.themes.add(id);
+      searchChanged();
+    }));
+    chipsEl.querySelectorAll("[data-basic]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.basic;
+      if (state.basics.has(id)) state.basics.delete(id); else state.basics.add(id);
+      searchChanged();
+    }));
+    chipsEl.querySelectorAll("[data-speaks]").forEach((b) => b.addEventListener("click", () => { state.lang = state.lang === b.dataset.speaks ? null : b.dataset.speaks; searchChanged(); }));
+  }
+  function searchChanged() {
+    renderSearch();
+    renderList();
+    drawRoutes();
+    scheduleMarks();
+    // the selected place stays only while it still matches
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p && !matchesSearch(p)) select(null);
+  }
+  searchEl.addEventListener("input", () => { state.query = searchEl.value; searchChanged(); });
+  searchEl.addEventListener("keydown", (ev) => {
+    // Escape clears the typed words first, then closes the search
+    if (ev.key === "Escape") { if (state.query) { searchEl.value = state.query = ""; searchChanged(); } else toggleFinder(false); }
+    if (ev.key === "Enter") {
+      // Enter with a single place found goes to it; with several, frames them all
+      const found = state.places.filter((p) => p.location && !state.hiddenPlace(p));
+      if (found.length) toggleFinder(false);
+      if (found.length === 1) select(found[0].id, { zoom: true });
+      else if (found.length > 1) zoomToPlaces(found.map((p) => p.id));
+    }
+  });
+  $("search-clear").addEventListener("click", () => { clearSearch(); searchEl.focus(); });
+
   function renderList() {
-    const here = placesInFocus();
-    listTitleEl.hidden = here.length > 0;
-    listTitleEl.textContent = here.length ? "" : t("noPlacesIn", focusName());
+    // while searching, the list shows every place that matches, wherever it is
+    const here = searching() ? state.places.filter((p) => p.location && matchesSearch(p)) : placesInFocus();
+    listTitleEl.hidden = here.length > 0 && !searching();
+    const it = state.intent && intentById(state.intent), tf = state.themes.size && themeField();
+    const ths = tf ? tf.options.filter((o) => state.themes.has(o.id)).map((o) => L(o)).join(t("or")) : "";
+    const what = [state.query.trim(), it && L(it), ths].concat([...state.basics].map((id) => basicById(id)).filter(Boolean).map((bc) => L(bc)), [state.lang]).filter(Boolean).join(" · ");
+    listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, what) : t("foundNone", what))
+      : here.length ? "" : t("noPlacesIn", focusName());
+    if (searching()) { // with a way to change or clear the search right there
+      const edit = document.createElement("span");
+      edit.className = "list-actions";
+      edit.innerHTML = '<button type="button" class="edit">' + t("editSearch") + '</button> · <button type="button" class="clear">' + t("clearAll") + "</button>";
+      edit.querySelector(".edit").addEventListener("click", () => toggleFinder(true));
+      edit.querySelector(".clear").addEventListener("click", clearSearch);
+      listTitleEl.appendChild(edit);
+    }
+    $("finder-done").textContent = here.length && searching() ? t("showPlaces", here.length) : t("done");
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {
       const places = here.filter((p) => p.categories.includes(c.id));
@@ -1276,7 +1440,11 @@
       group.innerHTML =
         '<button class="legend-head" type="button" aria-pressed="' + !state.hidden.has(c.id) + '" title="' + esc(c.label_it || c.label_en) + '">' +
         iconSvg(c.id, 26) + '<span class="label">' + esc(catLabel(c)) + '</span><span class="count">' + places.length + "</span></button>" +
-        "<ul>" + places.map((p) => '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button></li>").join("") + "</ul>";
+        "<ul>" + places.map((p) => {
+          const hint = state.query.trim() ? matchHint(p) : "";
+          return '<li><button type="button" data-id="' + esc(p.id) + '" aria-current="' + (p.id === state.selectedId) + '">' + esc(p.name) + "</button>" +
+            (hint ? '<small class="match" title="' + esc(hint) + '">' + esc(hint) + "</small>" : "") + "</li>";
+        }).join("") + "</ul>";
       const head = group.querySelector(".legend-head");
       head.addEventListener("click", () => {
         if (state.hidden.has(c.id)) state.hidden.delete(c.id); else state.hidden.add(c.id);
@@ -1287,6 +1455,31 @@
       group.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => select(b.dataset.id, { zoom: true })));
       legendEl.appendChild(group);
     });
+  }
+
+  // ---------- pin: keep one place as the start of the ways and the circle while looking around ----------
+  const PIN_SVG = '<path class="pin-head" d="M2 1.5c2.5-1.6 7.5-1.6 10 0l-1.6 4.2c1.4.8 2.2 1.9 2.4 3.2H1.2c.2-1.3 1-2.4 2.4-3.2z"/><path class="pin-needle" d="M7 9v6.5"/>';
+  const pinIcon = (cls) => '<svg viewBox="-1 0 16 17" class="' + cls + '" aria-hidden="true">' + PIN_SVG + "</svg>";
+  function setPin(id) {
+    state.pinnedId = id || null;
+    if (id && !state.mode) setMode("car"); // the pin is for looking around, so show the ways
+    try { if (id) localStorage.setItem("roots-pin", id); else localStorage.removeItem("roots-pin"); } catch (err) { /* private window */ }
+    renderPinChip();
+    drawRoutes();
+    scheduleMarks();
+    const p = state.selectedId && state.placeById[state.selectedId];
+    if (p) showPlace(p);
+  }
+  function renderPinChip() {
+    const pinChipEl = $("pin-chip");
+    const p = state.pinnedId && state.placeById[state.pinnedId];
+    if (state.pinnedId && !p && state.places.length) state.pinnedId = null; // a place that is gone
+    pinChipEl.hidden = !p;
+    if (!p) { pinChipEl.innerHTML = ""; return; }
+    pinChipEl.innerHTML = pinIcon("pin-icon") + "<span>" + t("pinned") + ':</span> <button type="button" class="go">' + esc(p.name) + "</button>" +
+      '<button type="button" class="unpin" aria-label="' + t("unpin") + " " + esc(p.name) + '">×</button>';
+    pinChipEl.querySelector(".go").addEventListener("click", () => select(p.id, { zoom: true }));
+    pinChipEl.querySelector(".unpin").addEventListener("click", () => setPin(null));
   }
 
   // ---------- note ----------
@@ -1305,29 +1498,301 @@
     const site = p.website ? '<a href="' + esc(p.website) + '" target="_blank" rel="noopener">' + esc(p.website.replace(/^https?:\/\//, "")) + "</a>" : t("notYet");
     noteEl.innerHTML =
       '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
-      "<h2>" + esc(p.name) + "</h2>" +
+      '<button class="pin-btn" type="button" aria-pressed="' + (state.pinnedId === p.id) + '" title="' + esc(state.pinnedId === p.id ? t("unpin") : t("pin")) + '" aria-label="' + esc(state.pinnedId === p.id ? t("unpin") : t("pin")) + '">' + pinIcon("pin-icon") + "</button>" +
+      '<h2><button class="open-profile" type="button" title="' + esc(t("openProfile")) + '">' + esc(p.name) +
+      ' <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10v10M19 5L6 18"/></svg></button></h2>' +
       '<div class="kinds">' + kinds + "</div>" +
       "<p>" + (p.description ? esc(p.description) : t("noDescription")) + "</p>" +
       "<dl><dt>" + t("where") + "</dt><dd>" + esc(p.near || "") + "</dd>" +
       "<dt>" + t("website") + "</dt><dd>" + site + "</dd>" +
       "<dt>" + t("contact") + "</dt><dd>" + (p.contact ? esc(p.contact) : t("notYet")) + "</dd></dl>" +
+      offersNote(p) +
       connectionsNote(p);
     noteEl.querySelector(".close").addEventListener("click", () => select(null));
+    noteEl.querySelector(".open-profile").addEventListener("click", () => openProfile(p));
+    noteEl.querySelector(".pin-btn").addEventListener("click", () => setPin(state.pinnedId === p.id ? null : p.id));
     noteEl.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go, { zoom: true })));
   }
+
+  // the post-it stays short: just the kinds of things the place offers (the details are in the profile)
+  function offersNote(p) {
+    const ks = [...new Set((p.offers || []).map((o) => o.kind))].map((k) => state.offerKindById[k]).filter(Boolean);
+    return ks.length ? '<p class="offers-line"><b>' + t("offersBy") + "</b> " + ks.map((k) => esc(offerKindLabel(k))).join(", ") + "</p>" : "";
+  }
+
+  // ---------- the full profile: a big page over the map, with only what the place has filled in ----------
+  const sheetEl = $("sheet");
+  const L = (x) => (settings.lang === "es" && x.es) || x.en;
+  const LD = (x) => (settings.lang === "es" && x.desc_es) || x.desc_en || "";
+  const filled = (v) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length);
+  const pill = (txt, cls) => '<span class="pill' + (cls ? " " + cls : "") + '">' + esc(txt) + "</span>";
+  const TICK = '<svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8.5l3.5 3.5 7.5-8.5"/></svg>';
+  // little pen drawings for the options of the profile (24 x 24, strokes only, filled where marked)
+  const ART = {
+    // purpose
+    social: '<circle cx="8" cy="7" r="3"/><circle cx="16.5" cy="8" r="2.6"/><path d="M2.5 20c.5-4.5 2.8-7 5.5-7s5 2.5 5.5 7M12.5 14.5c1-1.3 2.4-2 4-2 2.6 0 4.4 2.3 4.8 6.5"/>',
+    ecological: '<path d="M5 19C4 10 10 4.5 20 4.5c.5 9.5-5 15-13 14.5z"/><path d="M5 19c3-5 6.5-8 10.5-10.5M3.5 21l1.5-2"/>',
+    economic: '<ellipse cx="12" cy="12" rx="8.5" ry="8.2"/><path d="M15.5 8.5c-1-1-2.2-1.5-3.4-1.5-2.8 0-4.4 2.3-4.4 5s1.6 5 4.4 5c1.2 0 2.4-.5 3.4-1.5M6 10.8h6.5M6 13.3h6"/>',
+    spiritual: '<path d="M12.3 12.2c.5-.6-.2-1.6-1-1.4-1.3.2-1.5 2-.6 2.8 1.4 1.3 3.7.4 4.2-1.4.7-2.4-1.3-4.6-3.7-4.6-3.2 0-5.2 3-4.6 6 .7 3.5 4.4 5.4 7.7 4.4 4-1.2 5.8-5.7 4.6-9.5C17.7 4.6 14 2.6 10.3 3.2"/>',
+    cultural: '<path d="M9 18V5.5l11-2.5v12.5"/><ellipse cx="6.5" cy="18" rx="2.6" ry="2.1"/><ellipse cx="17.5" cy="15.5" rx="2.6" ry="2.1"/><path d="M9 9l11-2.5"/>',
+    educational: '<path d="M12 6.5C9.5 4.8 6.3 4.3 3 5v13.5c3.3-.7 6.5-.2 9 1.5 2.5-1.7 5.7-2.2 9-1.5V5c-3.3-.7-6.5-.2-9 1.5zM12 6.5V20"/>',
+    // offers
+    food: '<path d="M12 7.5c-1.8-1.6-6.5-1.8-7.4 2.5-.9 4.2 2 9.9 5 9.6 1 0 1.4-.6 2.4-.6s1.4.6 2.4.6c3 .3 5.9-5.4 5-9.6-.9-4.3-5.6-4.1-7.4-2.5zM12 7.5c0-2 .7-3.4 2.2-4.3"/><path d="M12.3 5.2c1.2-1.6 3.2-1.8 4.4-1.2-.5 1.6-2.4 2.4-4.4 1.2z"/>',
+    stays: '<path d="M2.5 19V7M2.5 15.5h19V19M2.5 12.5h19v3M21.5 12.5c0-2-1-3.2-3.5-3.2h-7.5v3.2"/><ellipse cx="6.5" cy="10.8" rx="2.1" ry="1.7"/>',
+    courses: '<path d="M4 20l1.2-4.6L16 4.6c.9-.9 2.4-.9 3.3 0s.9 2.4 0 3.3L8.6 18.8z"/><path d="M14.4 6.2l3.4 3.4M5.2 15.4l3.4 3.4"/>',
+    events: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.3 6L12 16.4l-5.4 3 1.3-6L3.4 9.3l6-.7z"/>',
+    volunteering: '<path d="M12 20s-7.8-4.6-8.5-10C3 6.6 5.3 4.4 7.9 4.6c1.8.1 3.2 1.2 4.1 2.8.9-1.6 2.3-2.7 4.1-2.8 2.6-.2 4.9 2 4.4 5.4-.7 5.4-8.5 10-8.5 10z"/>',
+    crafts: '<circle cx="6.5" cy="17.5" r="2.7"/><circle cx="17.5" cy="17.5" r="2.7"/><path d="M8.5 15.6L17 3.5M15.5 15.6L7 3.5"/>',
+    school: '<path d="M6 8.5h12c1 0 1.8.8 1.8 1.8V19c0 .8-.6 1.4-1.4 1.4H5.6c-.8 0-1.4-.6-1.4-1.4v-8.7c0-1 .8-1.8 1.8-1.8zM9 8.5V6c0-1.6 1.3-2.8 3-2.8s3 1.2 3 2.8v2.5M8 13h8v3.5H8z"/>',
+    // governance
+    horizontal: '<circle cx="4.5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19.5" cy="12" r="2.3"/><path d="M6.8 12h2.9M14.3 12h2.9M5.5 9.8c3.5-4.2 9.5-4.2 13 0"/>',
+    circles: '<circle cx="9" cy="9.5" r="5.5"/><circle cx="15" cy="9.5" r="5.5"/><circle cx="12" cy="15" r="5.5"/>',
+    hierarchical: '<circle cx="12" cy="4.5" r="2.3"/><circle cx="6" cy="12" r="2.1"/><circle cx="18" cy="12" r="2.1"/><circle cx="3.5" cy="19.5" r="1.8"/><circle cx="8.5" cy="19.5" r="1.8"/><circle cx="15.5" cy="19.5" r="1.8"/><circle cx="20.5" cy="19.5" r="1.8"/><path d="M10.5 6.3L7.2 10.3M13.5 6.3l3.3 4M5.2 14l-1 3.7M6.8 14l1 3.7M17.2 14l-1 3.7M18.8 14l1 3.7"/>',
+    consensus: '<circle cx="12" cy="12" r="7.5"/><circle class="fill" cx="12" cy="4.5" r="1.8"/><circle class="fill" cx="19.5" cy="12" r="1.8"/><circle class="fill" cx="12" cy="19.5" r="1.8"/><circle class="fill" cx="4.5" cy="12" r="1.8"/><path d="M9 12.3l2.2 2.2 4-4.5"/>',
+    consent: '<path d="M8 20.5v-6.8l-2.4-2.2c-.8-.8-.7-2 .2-2.5.7-.4 1.5-.2 2 .3L9.5 11V4.6c0-.8.6-1.4 1.4-1.4s1.4.6 1.4 1.4v5.2-1.6c0-.8.6-1.4 1.4-1.4s1.4.6 1.4 1.4v2.2c0-.8.6-1.4 1.4-1.4s1.4.6 1.4 1.4V16c0 2.6-1.5 4.5-3.5 4.5z"/>',
+    majority: '<path d="M3 20.5h18M5 20.5v-6h3.4v6M10.3 20.5V5h3.4v15.5M15.6 20.5v-9H19v9"/>',
+    mixed: '<circle cx="7" cy="7.5" r="3.5"/><path d="M14 4h6.5v6.5H14zM7 13.5l3.8 6.8H3.2zM14.5 17.2h6M17.5 14.2v6"/>',
+    // costs
+    entry_fee: '<path d="M5 21V4.2L14 3v18M5 21h14V5h-5M11.3 12.5h.4"/>',
+    dues: '<path d="M4 6h16v14H4zM4 10.2h16M8.5 3.5v4.5M15.5 3.5v4.5"/><path d="M13.6 13.2c-.5-.5-1.1-.7-1.7-.7-1.4 0-2.2 1-2.2 2.3s.8 2.3 2.2 2.3c.6 0 1.2-.2 1.7-.7M9 14.4h3M9 15.6h3"/>',
+    own_income: '<path d="M3.5 7.5h15.5c.8 0 1.5.7 1.5 1.5v9.5c0 .8-.7 1.5-1.5 1.5h-14c-.8 0-1.5-.7-1.5-1.5zM3.5 7.5L15.5 4l1.2 3.5M20.5 11.5h-4c-1 0-1.6.8-1.6 1.7s.6 1.7 1.6 1.7h4"/>',
+    work_exchange: '<path d="M14.5 4.5l5 5-2.6 2.6-5-5zM13.3 8.6L4 18c-.8.8-.8 2 0 2.6.7.7 1.9.7 2.6 0l9.3-9.4"/>',
+    // vehicles
+    own: '<path d="M3 16.5v-3.5l2.2-4.6c.3-.6.9-.9 1.5-.9h10.6c.6 0 1.2.3 1.5.9L21 13v3.5zM3 13h18"/><circle cx="7.3" cy="17" r="1.9"/><circle cx="16.7" cy="17" r="1.9"/>',
+    shared: '<path d="M3 18.5V15l2.2-4.6c.3-.6.9-.9 1.5-.9h10.6c.6 0 1.2.3 1.5.9L21 15v3.5zM3 15h18"/><circle cx="9.5" cy="4.6" r="1.6"/><circle cx="14.5" cy="4.6" r="1.6"/><path d="M7 9c.3-1.7 1.3-2.5 2.5-2.5S11.7 7.3 12 9c.3-1.7 1.3-2.5 2.5-2.5S16.7 7.3 17 9"/>',
+    car_sharing: '<circle cx="7.5" cy="12" r="4.3"/><circle cx="7.5" cy="12" r="1.3"/><path d="M11.8 12H21v3M18 12v2.5"/>',
+    car_free: '<circle cx="5.5" cy="16" r="3.6"/><circle cx="18.5" cy="16" r="3.6"/><path d="M5.5 16l3.6-7.2h7.6L18.5 16M9.1 8.8l3.4 7.2 4.2-7.2M8.2 6.5h2.8M15.2 6h2.5"/>',
+    // food
+    shared_meals: '<path d="M3.5 10.5h17v1.5c0 4.4-3.6 7.5-8.5 7.5s-8.5-3.1-8.5-7.5zM2 10.5h20M8.5 8c-.7-1 .7-2-.2-3.3M12 8c-.7-1 .7-2-.2-3.3M15.5 8c-.7-1 .7-2-.2-3.3"/>',
+    vegetarian: '<path d="M14.8 9.2L3.5 20.5c3.3 0 9-3.6 13-7.6.9-.9.9-2.4 0-3.3s-2.3-.9-3.2 0zM15 9c.3-2 1.5-4 3.8-5.2M15.2 9c1.2-1.5 3.3-2.3 5.5-1.6M15 9.2c-.5-1.8-.2-3.7.8-5.2M6.5 17.5l-1.2-1.2M9.5 15.5L8 14"/>',
+    vegan: '<path d="M12 21v-9M12 12C12 7 8.5 4.5 4 4.5c0 4.7 3.3 7.5 8 7.5zM12 14.5c0-4 2.8-6.3 7.5-6.3 0 4-3.2 6.3-7.5 6.3z"/>',
+    own_food: '<path d="M2.5 20.5h19M4.5 20.5c1-2 2.5-3 4-3s3 1 4 3M12 17.5V9.5M12 12.5c-.3-2.5-2.3-4-5-4 .2 2.6 2.2 4 5 4zM12 10.5c.3-2.8 2.5-4.6 5.5-4.4-.3 2.9-2.5 4.6-5.5 4.4z"/>',
+    food_surplus: '<path d="M3.5 9.5h17l-1.8 10c-.1.6-.7 1-1.3 1H6.6c-.6 0-1.2-.4-1.3-1zM7 9.5l3-5.5M17 9.5l-3-5.5M8.5 13v4.5M12 13v4.5M15.5 13v4.5"/>',
+    // support
+    medical: '<path d="M9 3.5h6V9h5.5v6H15v5.5H9V15H3.5V9H9z"/>',
+    childcare: '<path d="M3 9.5h14c0 4-3 6.5-7 6.5S3 13.5 3 9.5zM3 9.5C3 6 6 3.5 10 3.5v6M17 9.5l1.5-4.5H21"/><circle cx="6" cy="18.8" r="1.8"/><circle cx="14" cy="18.8" r="1.8"/>',
+    elder_care: '<circle cx="10" cy="4.5" r="2.2"/><path d="M10 7.5c-1.6 0-2.6 1.2-2.6 3v4.5M10 7.5c1.7 0 2.6 1.4 2.6 3l2.9 2M8.4 15l-1 6M10.5 14.5l1.5 6.5M16.5 12.5v8.5M16.5 12.5c0-1.4 1.2-2 2.2-1.6"/>',
+    // practices
+    protests: '<path d="M4 3.5h16v9H4zM12 12.5v9M7.5 7l2 2 3-3.5M14 8h3"/>',
+    local_politics: '<path d="M3 20.5h18M4.5 20.5v-1.5h15v1.5M5.5 19v-8M9.5 19v-8M14.5 19v-8M18.5 19v-8M3.5 11h17L12 4.5z"/>',
+    social_justice: '<path d="M12 3.5v17M8 20.5h8M4.5 7h15M4.5 7l-2.7 6.5c0 1.5 1.2 2.5 2.7 2.5s2.7-1 2.7-2.5zM19.5 7l-2.7 6.5c0 1.5 1.2 2.5 2.7 2.5s2.7-1 2.7-2.5zM1.8 13.5h5.4M16.8 13.5h5.4"/>',
+    land: '<path d="M2 19.5l6.5-11 4 6.5 3-4.5 6.5 9zM6.5 12l2 1.5 2-2.5"/><circle cx="18" cy="5" r="2"/>',
+    trainings: '<path d="M3.5 4h17v11.5h-17zM12 15.5v5M8 20.5l4-5 4 5M6.5 8h7M6.5 11h4.5"/>',
+    // ages
+    all: '<circle cx="4.5" cy="5" r="2"/><path d="M4.5 8v8M2 11h5M4.5 16l-2 4.5M4.5 16l2 4.5"/><circle cx="12" cy="9" r="1.7"/><path d="M12 11.5v5.5M10 13.5h4M12 17l-1.5 3.5M12 17l1.5 3.5"/><circle cx="19.5" cy="5" r="2"/><path d="M19.5 8v8M17 11h5M19.5 16l-2 4.5M19.5 16l2 4.5"/>',
+    families: '<circle cx="6" cy="5" r="2"/><path d="M6 8v8M3.5 11H12M6 16l-2 4.5M6 16l2 4.5"/><circle cx="18" cy="5" r="2"/><path d="M18 8v8M12 11h8.5M18 16l-2 4.5M18 16l2 4.5"/><circle cx="12" cy="13" r="1.5"/><path d="M12 15v3M12 18l-1.3 2.5M12 18l1.3 2.5"/>',
+    young: '<circle cx="12" cy="8.5" r="2.3"/><path d="M12 11.5v5M8 12l4 1.5 4-1.5M12 16.5l-2.5 4M12 16.5l2.5 4M8.5 5.5l-1-2M15.5 5.5l1-2"/>',
+    older: '<circle cx="10" cy="4.5" r="2.2"/><path d="M10 7.5c-1.6 0-2.6 1.2-2.6 3v4.5M10 7.5c1.7 0 2.6 1.4 2.6 3l2.9 2M8.4 15l-1 6M10.5 14.5l1.5 6.5M16.5 12.5v8.5M16.5 12.5c0-1.4 1.2-2 2.2-1.6"/>',
+    // accessibility
+    mobility: '<circle cx="11" cy="3.8" r="1.8"/><path d="M10.5 6.5v6.5h6l2 5.5h2M10.5 9.5h5"/><path d="M8 10.2a5.6 5.6 0 1 0 7.8 6.6"/>',
+    neurodiverse: '<path d="M12 12c-2-3-4-4.5-6.3-4.5C3.5 7.5 2 9.5 2 12s1.5 4.5 3.7 4.5c2.3 0 4.3-1.5 6.3-4.5s4-4.5 6.3-4.5c2.2 0 3.7 2 3.7 4.5s-1.5 4.5-3.7 4.5c-2.3 0-4.3-1.5-6.3-4.5z"/>',
+    chronic_illness: '<path d="M2 12.5h4.5l2-4.5 3 9 2.5-6.5 1.5 2h6.5"/>',
+    mental_health: '<path d="M7 21v-3.5c-2.3-1.4-3.5-3.7-3.5-6.5 0-4.5 3.6-7.8 8-7.8 4 0 7.3 2.8 7.8 6.5l1.7 3.3h-1.7v2.5c0 1.2-.9 2-2 2h-2V21"/><path d="M11.5 13.5S8.5 11.8 8.5 9.8c0-1 .8-1.7 1.6-1.7.6 0 1.1.3 1.4.8.3-.5.8-.8 1.4-.8.8 0 1.6.7 1.6 1.7 0 2-3 3.7-3 3.7z"/>',
+    // sections
+    "sec-about": '<path d="M3 11l9-7.5 9 7.5M5.5 9v11.5h13V9M10 20.5v-6h4v6"/>',
+    "sec-offers": '<path d="M3.5 9.5h17l-1.8 10c-.1.6-.7 1-1.3 1H6.6c-.6 0-1.2-.4-1.3-1zM7 9.5l3-5.5M17 9.5l-3-5.5"/><circle cx="9.5" cy="14.5" r="1.8"/><circle cx="14.5" cy="15" r="1.6"/>',
+    "sec-membership": '<circle cx="8" cy="7" r="3"/><circle cx="16.5" cy="8" r="2.6"/><path d="M2.5 20c.5-4.5 2.8-7 5.5-7s5 2.5 5.5 7M12.5 14.5c1-1.3 2.4-2 4-2 2.6 0 4.4 2.3 4.8 6.5"/>',
+    "sec-governance": '<circle cx="9" cy="9.5" r="5.5"/><circle cx="15" cy="9.5" r="5.5"/><circle cx="12" cy="15" r="5.5"/>',
+    "sec-lifestyle": '<path d="M3.5 10.5h17v1.5c0 4.4-3.6 7.5-8.5 7.5s-8.5-3.1-8.5-7.5zM2 10.5h20M8.5 8c-.7-1 .7-2-.2-3.3M12 8c-.7-1 .7-2-.2-3.3M15.5 8c-.7-1 .7-2-.2-3.3"/>',
+    "sec-diversity": '<path d="M2.5 18a9.5 9.5 0 0 1 19 0M5.5 18a6.5 6.5 0 0 1 13 0M8.5 18a3.5 3.5 0 0 1 7 0"/>',
+    website: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c-2.5 2.4-3.6 5.2-3.6 8.5s1.1 6.1 3.6 8.5c2.5-2.4 3.6-5.2 3.6-8.5S14.5 5.9 12 3.5z"/>',
+    contact: '<path d="M3 6h18v12H3zM3 6l9 7 9-7"/>',
+  };
+  const art = (id, cls) => '<svg viewBox="0 0 24 24" class="art' + (cls ? " " + cls : "") + '" aria-hidden="true">' + (ART[id] || "") + "</svg>";
+  // options that run from little to a lot are drawn as a scale, in this order
+  const SCALES = {
+    decision_authority: ["founders", "council", "all"],
+    economic_model: ["independent", "partial", "shared"],
+    social_life: ["private", "sometimes", "often"],
+    local_ties: ["few", "some", "strong"],
+    pets: ["none", "some", "allowed"],
+    substances: ["none", "occasions", "free"],
+  };
+  // the stage of a place, drawn as a plant growing from a seed to a tree
+  const STAGE_ART = {
+    forming: '<path class="soil" d="M3 33h34"/><ellipse class="leaf" cx="20" cy="30" rx="3.2" ry="2.2"/><path d="M20 28c.3-1.2 1-2 2-2.5"/>',
+    young: '<path class="soil" d="M3 33h34"/><path d="M20 33V21"/><path class="leaf" d="M20 24c-1-3.5-4-5-7.5-4.5.5 3.5 3.5 5 7.5 4.5zM20 22c1-3.8 4.2-5.5 8-5-.6 3.8-3.8 5.5-8 5z"/>',
+    established: '<path class="soil" d="M3 33h34"/><path d="M20 33V12M20 22l-5-4M20 18l5-4"/><path class="leaf" d="M15 18c-3.4.5-5.6-1.2-6-4.5 3.4-.5 5.6 1.2 6 4.5zM25 14c3.4.5 5.6-1.2 6-4.5-3.4-.5-5.6 1.2-6 4.5zM20 12c-2-2.2-2-5 0-7.5 2 2.5 2 5.3 0 7.5z"/>',
+    mature: '<path class="soil" d="M3 33h34"/><path d="M18 33l.8-9h2.4l.8 9M20 24v-5M20 22l-4-3M20 21l4-3.5"/><path class="leaf" d="M20 21c-6 0-11-2.5-11-7.5 0-3.5 2.5-5.5 5-5.5.8-3.2 3.3-5 6-5s5.2 1.8 6 5c2.5 0 5 2 5 5.5 0 5-5 7.5-11 7.5z"/>',
+  };
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+  // a field is left out for places that are only of types it does not fit (a school has no pets
+  // policy); some fields have another name for some types ("How to enrol" for a school)
+  const fits = (f, p) => !f.not_for || p.categories.some((c) => !f.not_for.includes(c));
+  const FL = (f, p) => { const c = f.label_for && p.categories.find((x) => f.label_for[x]); return L(c ? f.label_for[c] : f); };
+  // a rough picture of who is there: a few pen strokes per group, in words, never numbers
+  function levelsHtml(f, v) {
+    return '<div class="levels">' + (f.groups || []).map((g) => {
+      const n = Math.max(0, Math.min(3, +v[g.id] || 0)), lv = f.levels && f.levels[n];
+      return '<span class="group">' + esc(L(g)) + '</span><span class="marks">' + [1, 2, 3].map((i) => '<i class="' + (i <= n ? "on" : "") + '"></i>').join("") +
+        '</span><span class="word">' + (lv ? esc(L(lv)) : "") + "</span>";
+    }).join("") + "</div>";
+  }
+  SCALES.gender = ["mostly_women", "balanced", "mostly_men"];
+  function fieldHtml(f, v) {
+    const opt = (id) => (f.options || []).find((x) => x.id === id);
+    if (SCALES[f.id] && opt(v)) {
+      // a pen line with a dot for each step; the place's own step is a big inked dot
+      const steps = SCALES[f.id].map(opt).filter(Boolean), at = steps.findIndex((o) => o.id === v);
+      return '<div class="scale" style="--n:' + steps.length + '"><div class="scale-line">' + steps.map((o, i) =>
+        '<span class="step' + (i === at ? " on" : "") + '"><i></i><b>' + esc(L(o)) + "</b></span>").join("") + "</div>" +
+        (LD(opt(v)) ? "<small>" + esc(LD(opt(v))) + "</small>" : "") + "</div>";
+    }
+    switch (f.type) {
+      case "levels": return levelsHtml(f, v);
+      case "flag": return '<p class="stamps"><span class="stamp ' + (v ? "yes" : "no") + '" style="--tilt:-2deg">' + (v ? "✓ " + t("yes") : "✗ " + t("no")) + "</span></p>";
+      case "text": return '<div class="prose' + (f.id === "vision" ? " vision" : "") + '">' + esc(v).split(/\n{2,}/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>";
+      case "line": case "date": return "<p>" + esc(v) + "</p>";
+      case "number": return '<p class="big-number">' + esc(v) + "</p>";
+      case "link": return '<p class="contact-line">' + art("website") + '<a href="' + esc(v) + '" target="_blank" rel="noopener">' + esc(String(v).replace(/^https?:\/\//, "").replace(/\/$/, "")) + "</a></p>";
+      case "email": return '<p class="contact-line">' + art("contact") + '<a href="mailto:' + esc(v) + '">' + esc(v) + "</a></p>";
+      case "tags":
+        if (f.id === "languages") return '<p class="bubbles">' + v.map((x) => '<span class="bubble">' + esc(x) + "</span>").join("") + "</p>";
+        if (f.id === "needs") return '<p class="wanted">' + v.map((x) => '<span class="want">' + esc(x) + "</span>").join("") + "</p>";
+        return '<p class="pills">' + v.map((x) => pill(x)).join("") + "</p>";
+      case "choice": case "choices": {
+        // every option drawn; the ones that apply are inked, the rest stay faint
+        const on = new Set([].concat(v));
+        const hasArt = (f.options || []).every((o) => ART[o.id]);
+        if (!hasArt) return '<ul class="checks">' + [...on].map(opt).filter(Boolean).map((o) => "<li>" + TICK + esc(L(o)) + "</li>").join("") + "</ul>";
+        const one = f.type === "choice" && opt(v);
+        return '<ul class="art-set">' + f.options.map((o) =>
+          '<li class="' + (on.has(o.id) ? "on" : "off") + '"' + (LD(o) ? ' title="' + esc(LD(o)) + '"' : "") + ">" + art(o.id) +
+          "<span>" + esc(L(o)) + "</span>" + (on.has(o.id) ? '<span class="sr">✓</span>' : "") + "</li>").join("") + "</ul>" +
+          (one && LD(one) ? '<small class="choice-desc">' + esc(LD(one)) + "</small>" : "");
+      }
+      case "offers": return '<ul class="offer-cards">' + v.map((o) => {
+        const k = state.offerKindById[o.kind];
+        return '<li data-kind="' + esc(o.kind) + '">' + art(o.kind, "offer-art") + "<div><b>" + esc(k ? L(k) : o.kind) + "</b><span>" + esc(o.what) + "</span>" +
+          (o.source ? ' <a class="src" href="' + esc(o.source) + '" target="_blank" rel="noopener">' + t("source") + "</a>" : "") +
+          (o.confirmed ? "" : ' <small class="unconfirmed">' + t("toConfirm") + "</small>") + "</div></li>";
+      }).join("") + "</ul>";
+      case "media": return '<div class="media">' + v.map((m) => /\.(jpe?g|png|webp|gif)$/i.test(m.url)
+        ? '<figure><img src="' + esc(m.url) + '" alt="' + esc(m.caption || "") + '" loading="lazy">' + (m.caption ? "<figcaption>" + esc(m.caption) + "</figcaption>" : "") + "</figure>"
+        : '<p><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.caption || m.url) + "</a></p>").join("") + "</div>";
+      default: return "<p>" + esc(String(v)) + "</p>";
+    }
+  }
+  // "at a glance": the stage, the age, the people and who is welcome, drawn at the top of the page
+  const GLANCE = ["stage", "founded", "members", "residents", "open_members", "open_visitors", "open_volunteers"];
+  function glanceHtml(p, fieldById) {
+    const tiles = [], people = [];
+    const st = fieldById.stage, so = st && p.stage && st.options.find((o) => o.id === p.stage);
+    if (so) tiles.push('<div class="glance-tile"><h4>' + esc(L(st)) + '</h4><div class="growth">' + st.options.map((o) =>
+      '<span class="' + (o.id === p.stage ? "on" : "") + '"><svg viewBox="0 0 40 36" aria-hidden="true">' + (STAGE_ART[o.id] || "") + "</svg><small>" + esc(L(o)) + "</small></span>").join("") +
+      "</div>" + (LD(so) ? '<p class="cap">' + esc(LD(so)) + "</p>" : "") + "</div>");
+    const y = parseInt(p.founded, 10), now = new Date().getFullYear();
+    if (y > 1000 && y <= now) {
+      // a time line from the decade before it started until now
+      const from = Math.min(Math.floor(y / 10) * 10 - 10, now - 30), span = now - from, x = (yr) => 6 + ((yr - from) / span) * 148;
+      let ticks = "";
+      for (let d = Math.ceil(from / 10) * 10; d <= now; d += 10) ticks += '<path d="M' + x(d) + ' 25v5"/><text x="' + x(d) + '" y="40">' + "’" + String(d).slice(2) + "</text>";
+      tiles.push('<div class="glance-tile"><h4>' + esc(L(fieldById.founded)) + '</h4><p class="since">' + t("since", y) + " · <b>" + t("yearsOld", now - y) + "</b></p>" +
+        '<svg class="timeline" viewBox="0 0 160 44" aria-hidden="true"><path d="M6 27.5c40-1 90 1 148-.5"/>' + ticks +
+        '<path class="lived" d="M' + x(y) + " 27.5H" + x(now) + '"/><circle class="start" cx="' + x(y) + '" cy="27.5" r="4"/><path class="flag" d="M' + x(y) + " 23.5V8l10 3.5-10 3.5\"/></svg></div>");
+    }
+    const m = fits(fieldById.members, p) ? +p.members || 0 : 0, r = fits(fieldById.residents, p) ? Math.min(+p.residents || 0, m || Infinity) : 0;
+    const custom = fieldById.members.label_for && p.categories.some((c) => fieldById.members.label_for[c]);
+    if (m || r) {
+      // one little figure per person (or per few people for big places); filled ones live there
+      const total = m || r, per = total > 60 ? 10 : total > 30 ? 5 : 1, n = Math.ceil(total / per), live = Math.round(r / per);
+      const fig = (cls) => '<svg viewBox="0 0 12 20" class="fig ' + cls + '" aria-hidden="true"><circle cx="6" cy="4" r="3"/><path d="M1.5 19v-6.5C1.5 9.5 3.4 8 6 8s4.5 1.5 4.5 4.5V19z"/></svg>';
+      people.push('<div class="glance-tile wide"><h4>' + (custom ? esc(FL(fieldById.members, p)) : t("people")) + '</h4><p class="since"><b>' + (custom ? total : plural(total, t("member"), t("members"))) + "</b>" +
+        (r ? " · " + t("liveThere", r) : "") + '</p><div class="crowd">' + Array.from({ length: n }, (_, i) => fig(i < live ? "lives" : "")).join("") + "</div>" +
+        '<p class="cap">' + (r ? fig("lives") + " " + t("liveHereKey") + " " : "") + fig("") + " " + (custom ? t("personKey") : t("memberKey")) + (per > 1 ? " · " + t("perFigure", per) : "") + "</p></div>");
+    }
+    const flags = ["open_visitors", "open_volunteers", "open_members"].filter((id) => fieldById[id] && fits(fieldById[id], p) && typeof p[id] === "boolean");
+    if (flags.length) tiles.push('<div class="glance-tile"><h4>' + t("welcomeTitle") + '</h4><div class="stamps">' + flags.map((id, i) =>
+      '<span class="stamp ' + (p[id] ? "yes" : "no") + '" style="--tilt:' + [-4, 3, -2][i] + 'deg">' + (p[id] ? "✓ " : "✗ ") + esc(FL(fieldById[id], p)) + "</span>").join("") + "</div></div>");
+    tiles.push(...people);
+    return tiles.length ? '<div class="glance">' + tiles.join("") + "</div>" : "";
+  }
+  const openSections = new Set(["about", "offers"]); // remembered while the page is open
+  function openProfile(p) {
+    const pr = state.profile;
+    if (!pr) return;
+    const kinds = p.categories.map((c) => '<span class="kind">' + iconSvg(c, 26) + esc(state.catById[c] ? catLabel(state.catById[c]) : c) + "</span>").join("");
+    const where = [p.near, state.regionById[p._region] && countryName(state.regionById[p._region]), state.countryById[p._country] && countryName(state.countryById[p._country])].filter(Boolean).join(", ");
+    const fieldById = {};
+    pr.sections.forEach((s) => s.fields.forEach((f) => (fieldById[f.id] = f)));
+    const glance = glanceHtml(p, fieldById);
+    let body = "", count = 0;
+    pr.sections.forEach((sec) => {
+      const fs = sec.fields.filter((f) => !GLANCE.includes(f.id) && fits(f, p) && filled(p[f.id]) && (f.type !== "flag" || typeof p[f.id] === "boolean"));
+      if (!fs.length) return;
+      count += fs.length;
+      // the closed card still shows the drawings of what applies, as a preview
+      const peek = fs.flatMap((f) => (f.type === "choice" || f.type === "choices") && (f.options || []).every((o) => ART[o.id]) && !SCALES[f.id] ? [].concat(p[f.id]) : [])
+        .concat(sec.id === "offers" ? [...new Set((p.offers || []).map((o) => o.kind))] : []).filter((id) => ART[id]).slice(0, 7);
+      let group = null;
+      const tiles = fs.map((f) => {
+        // a section can be split in parts, each with a small heading across the card
+        const g = f.group && L(f.group) !== group ? (group = L(f.group)) : null;
+        const wide = ["text", "offers", "media"].includes(f.id === "needs" ? "text" : f.type) || ((f.type === "choices" || (f.type === "choice" && !SCALES[f.id])));
+        return (g ? '<p class="tile-group">' + esc(g) + "</p>" : "") + '<div class="tile' + (wide ? " wide" : "") + '"><h4>' + esc(FL(f, p)) + "</h4>" + fieldHtml(f, p[f.id]) + "</div>";
+      }).join("");
+      body += '<details class="card" data-sec="' + esc(sec.id) + '"' + (openSections.has(sec.id) ? " open" : "") + "><summary>" + art("sec-" + sec.id, "sec-art") +
+        '<span class="card-title">' + esc(L(sec)) + '</span><span class="peek">' + peek.map((id) => art(id)).join("") + "</span>" +
+        '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></summary><div class="tiles">' + tiles + "</div></details>";
+    });
+    const cards = (body.match(/<details/g) || []).length;
+    sheetEl.innerHTML =
+      '<article class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
+      '<button class="close" type="button" aria-label="' + t("close") + '">×</button>' +
+      '<header><h2 id="sheet-title">' + esc(p.name) + '</h2><div class="kinds">' + kinds + "</div>" +
+      (where ? '<p class="where">' + esc(where) + "</p>" : "") + "</header>" +
+      (p.sample ? '<p class="sample-note" role="note">' + t("sampleNote") + "</p>" : "") +
+      glance +
+      (cards > 1 ? '<p class="cards-tools"><button type="button" class="toggle-all"></button></p>' : "") +
+      (count || glance ? body : '<p class="empty">' + t("profileEmpty") + "</p>") + "</article>";
+    sheetEl.hidden = false;
+    document.body.classList.add("sheet-open");
+    const all = sheetEl.querySelector(".toggle-all"), details = [...sheetEl.querySelectorAll("details.card")];
+    const syncAll = () => { if (all) all.textContent = details.every((d) => d.open) ? t("closeAll") : t("openAll"); };
+    details.forEach((d) => d.addEventListener("toggle", () => {
+      if (d.open) openSections.add(d.dataset.sec); else openSections.delete(d.dataset.sec);
+      syncAll();
+    }));
+    if (all) all.addEventListener("click", () => { const open = !details.every((d) => d.open); details.forEach((d) => (d.open = open)); });
+    syncAll();
+    const closeBtn = sheetEl.querySelector(".close");
+    closeBtn.addEventListener("click", closeProfile);
+    closeBtn.focus();
+  }
+  function closeProfile() {
+    if (sheetEl.hidden) return;
+    sheetEl.hidden = true;
+    sheetEl.innerHTML = "";
+    document.body.classList.remove("sheet-open");
+    const b = noteEl.querySelector(".open-profile");
+    if (b) b.focus();
+  }
+  sheetEl.addEventListener("click", (ev) => { if (ev.target === sheetEl) closeProfile(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !sheetEl.hidden) closeProfile(); });
 
   function connectionsNote(p) {
     if (!state.mode || !state.connections) return "";
     const r = reachSetting(), reach = currentReach();
+    const pin = state.pinnedId && state.placeById[state.pinnedId];
+    if (pin && pin.id !== p.id) {
+      // looking at another place while one is pinned: how far it is from the pinned one
+      const trip = reachFrom(pin.id, state.mode, "time", Infinity).get(p.id);
+      const via = trip && trip.prev !== pin.id ? state.placeById[trip.prev] : null;
+      return '<h3 class="ways-title">' + pinIcon("pin-icon") + t("fromPinned") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>" +
+        '<ul class="ways"><li><span class="who"><button type="button" data-go="' + esc(pin.id) + '">' + esc(pin.name) + "</button>" +
+        (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span><span>" +
+        (trip ? fmtTime(trip.min) + " · " + trip.km + " " + t("km") : "–") + "</span></li></ul>";
+    }
     const title = '<h3 class="ways-title">' + t("nearbyTitle") + ' <svg viewBox="0 0 24 24" class="mode-icon" role="img" aria-label="' + esc(MODES[state.mode].label) + '">' + MODE_ICONS[state.mode] + "</svg></h3>";
     const list = [...reach.entries()].filter(([id]) => id !== p.id).sort((a, b) => a[1].min - b[1].min);
-    if (!list.length) return title + '<p class="ways">' + t("reachNone") + "</p>";
+    const pinNote = pin ? '<p class="reach-help">' + t("pinnedHere") + "</p>" : "";
+    if (!list.length) return title + '<p class="ways">' + t("reachNone") + "</p>" + pinNote;
     return title + '<ul class="ways">' + list.map(([id, info]) => {
       const o = state.placeById[id], via = info.prev !== p.id ? state.placeById[info.prev] : null;
       return '<li><span class="who"><button type="button" data-go="' + esc(id) + '">' + esc(o.name) + "</button>" +
         (via ? "<small>" + esc(t("via", via.name)) + "</small>" : "") + "</span>" +
         "<span>" + fmtTime(info.min) + " · " + info.km + " " + t("km") + "</span></li>";
-    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>";
+    }).join("") + "</ul>" + '<p class="reach-help">' + t("reachHelp") + "</p>" + pinNote;
   }
 
   function select(id, opts) {
@@ -1453,6 +1918,16 @@
     state.categories = places.categories;
     state.notYetPlaced = places.not_yet_placed || [];
     state.catById = Object.fromEntries(state.categories.map((c) => [c.id, c]));
+    renderSearch();
+    // the profile fields (and the kinds of offers) come from one shared list, also used to sign up
+    getJSON("data/profile.json").then((pr) => {
+      state.profile = pr;
+      const of = pr.sections.flatMap((x) => x.fields).find((x) => x.id === "offers");
+      state.offerKinds = (of && of.kinds) || [];
+      state.offerKindById = Object.fromEntries(state.offerKinds.map((k) => [k.id, k]));
+      state.places.forEach((p) => { delete p._hay; });
+      renderSearch(); renderList(); refreshNote();
+    }).catch(() => {});
     state.countries = rewind(countries);
     rewind(lakes);
     countries.features.forEach((f) => { state.countryById[f.properties.a3] = f; });

@@ -1,0 +1,921 @@
+{
+  "note": "Everything a place's profile can hold. The detail page shows only the fields a place has filled in; the sign-up form for new places is built from this same list. Field ids are the keys on each place in data/places.json. A field with not_for is left out (in the page and in the form) for places of only those types; label_for gives a field another name for some types; group splits a section into smaller parts.",
+  "types": {
+    "text": "long text, in the place's own language",
+    "line": "short text",
+    "date": "YYYY or YYYY-MM-DD",
+    "number": "a whole number",
+    "link": "a web address",
+    "email": "an e-mail address",
+    "flag": "true or false",
+    "choice": "one option id",
+    "choices": "a list of option ids",
+    "tags": "a list of free words",
+    "offers": "a list of {kind, what, source, confirmed}",
+    "media": "a list of {url, caption}",
+    "levels": "a rough amount for each group, {group id: 0-3} (none, a few, some, many); no exact numbers"
+  },
+  "sections": [
+    {
+      "id": "about",
+      "en": "About",
+      "es": "Sobre el lugar",
+      "fields": [
+        {
+          "id": "stage",
+          "type": "choice",
+          "en": "Stage",
+          "es": "Etapa",
+          "options": [
+            {
+              "id": "forming",
+              "en": "Forming",
+              "es": "En formación",
+              "desc_en": "Still looking for land or people.",
+              "desc_es": "Aún buscando terreno o personas."
+            },
+            {
+              "id": "young",
+              "en": "Young",
+              "es": "Joven",
+              "desc_en": "Started in the last few years.",
+              "desc_es": "Empezó hace pocos años."
+            },
+            {
+              "id": "established",
+              "en": "Established",
+              "es": "Establecido",
+              "desc_en": "Running for some years.",
+              "desc_es": "Funcionando desde hace años."
+            },
+            {
+              "id": "mature",
+              "en": "Mature",
+              "es": "Maduro",
+              "desc_en": "Running for a long time, settled ways of living together.",
+              "desc_es": "Funcionando desde hace mucho, con formas de convivir asentadas."
+            }
+          ]
+        },
+        {
+          "id": "founded",
+          "type": "date",
+          "en": "Founded",
+          "es": "Fundado"
+        },
+        {
+          "id": "description",
+          "type": "text",
+          "en": "What we do",
+          "es": "Qué hacemos"
+        },
+        {
+          "id": "vision",
+          "type": "text",
+          "en": "Our vision",
+          "es": "Nuestra visión"
+        },
+        {
+          "id": "purpose",
+          "type": "choices",
+          "en": "Purpose",
+          "es": "Propósito",
+          "options": [
+            {
+              "id": "social",
+              "en": "Social",
+              "es": "Social"
+            },
+            {
+              "id": "ecological",
+              "en": "Ecological",
+              "es": "Ecológico"
+            },
+            {
+              "id": "economic",
+              "en": "Economic",
+              "es": "Económico"
+            },
+            {
+              "id": "spiritual",
+              "en": "Spiritual",
+              "es": "Espiritual"
+            },
+            {
+              "id": "cultural",
+              "en": "Cultural",
+              "es": "Cultural"
+            },
+            {
+              "id": "educational",
+              "en": "Educational",
+              "es": "Educativo"
+            }
+          ]
+        },
+        {
+          "id": "languages",
+          "type": "tags",
+          "en": "Languages",
+          "es": "Idiomas"
+        },
+        {
+          "id": "activities",
+          "type": "tags",
+          "en": "Activities",
+          "es": "Actividades"
+        },
+        {
+          "id": "website",
+          "type": "link",
+          "en": "Website",
+          "es": "Web"
+        },
+        {
+          "id": "contact",
+          "type": "email",
+          "en": "Contact",
+          "es": "Contacto"
+        },
+        {
+          "id": "media",
+          "type": "media",
+          "en": "Photos and videos",
+          "es": "Fotos y vídeos"
+        }
+      ]
+    },
+    {
+      "id": "offers",
+      "en": "Needs and offers",
+      "es": "Necesidades y ofertas",
+      "fields": [
+        {
+          "id": "offers",
+          "type": "offers",
+          "en": "What they offer",
+          "es": "Qué ofrecen",
+          "kinds": [
+            {
+              "id": "food",
+              "en": "Food & produce",
+              "es": "Comida y productos"
+            },
+            {
+              "id": "stays",
+              "en": "Stays",
+              "es": "Alojamiento"
+            },
+            {
+              "id": "courses",
+              "en": "Courses & workshops",
+              "es": "Cursos y talleres"
+            },
+            {
+              "id": "events",
+              "en": "Events & retreats",
+              "es": "Eventos y retiros"
+            },
+            {
+              "id": "volunteering",
+              "en": "Volunteering",
+              "es": "Voluntariado"
+            },
+            {
+              "id": "crafts",
+              "en": "Crafts & goods",
+              "es": "Artesanía"
+            },
+            {
+              "id": "school",
+              "en": "School & childcare",
+              "es": "Escuela e infancia"
+            }
+          ]
+        },
+        {
+          "id": "needs",
+          "type": "tags",
+          "en": "What they are looking for",
+          "es": "Qué buscan"
+        }
+      ]
+    },
+    {
+      "id": "membership",
+      "en": "Membership",
+      "es": "Miembros",
+      "fields": [
+        {
+          "id": "members",
+          "type": "number",
+          "en": "Members",
+          "es": "Miembros",
+          "label_for": {
+            "school": {
+              "en": "Children and staff",
+              "es": "Niños y personal"
+            }
+          }
+        },
+        {
+          "id": "residents",
+          "type": "number",
+          "en": "Full-time residents",
+          "es": "Residentes a tiempo completo",
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "open_members",
+          "type": "flag",
+          "en": "Open to new members",
+          "es": "Abierto a nuevos miembros",
+          "label_for": {
+            "school": {
+              "en": "Open to new families",
+              "es": "Abierto a nuevas familias"
+            }
+          }
+        },
+        {
+          "id": "open_visitors",
+          "type": "flag",
+          "en": "Open to visitors",
+          "es": "Abierto a visitas"
+        },
+        {
+          "id": "open_volunteers",
+          "type": "flag",
+          "en": "Open to volunteers",
+          "es": "Abierto a voluntarios"
+        },
+        {
+          "id": "how_to_join",
+          "type": "text",
+          "en": "How to join",
+          "es": "Cómo unirse",
+          "label_for": {
+            "school": {
+              "en": "How to enrol",
+              "es": "Cómo inscribirse"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "governance",
+      "en": "Governance and economics",
+      "es": "Gobernanza y economía",
+      "fields": [
+        {
+          "id": "decision_authority",
+          "type": "choice",
+          "en": "Who decides",
+          "es": "Quién decide",
+          "options": [
+            {
+              "id": "all",
+              "en": "All members together",
+              "es": "Todos los miembros juntos",
+              "desc_en": "The whole membership decides collectively.",
+              "desc_es": "Todo el grupo decide en conjunto."
+            },
+            {
+              "id": "council",
+              "en": "A council or circle",
+              "es": "Un consejo o círculo",
+              "desc_en": "Elected or rotating people decide for the group.",
+              "desc_es": "Personas elegidas o rotativas deciden por el grupo."
+            },
+            {
+              "id": "founders",
+              "en": "Founders or owners",
+              "es": "Fundadores o propietarios",
+              "desc_en": "The people who started or own the place decide.",
+              "desc_es": "Deciden quienes fundaron o son dueños del lugar."
+            }
+          ],
+          "group": {
+            "en": "How it is run",
+            "es": "Cómo se organiza"
+          }
+        },
+        {
+          "id": "decision_process",
+          "type": "choice",
+          "en": "How decisions are made",
+          "es": "Cómo se decide",
+          "options": [
+            {
+              "id": "consensus",
+              "en": "Consensus",
+              "es": "Consenso",
+              "desc_en": "Everyone agrees before a decision is made.",
+              "desc_es": "Todos están de acuerdo antes de decidir."
+            },
+            {
+              "id": "consent",
+              "en": "Consent (sociocracy)",
+              "es": "Consentimiento (sociocracia)",
+              "desc_en": "Decisions go ahead unless someone has a reasoned objection.",
+              "desc_es": "Se decide salvo que alguien tenga una objeción razonada."
+            },
+            {
+              "id": "majority",
+              "en": "Majority vote",
+              "es": "Voto por mayoría",
+              "desc_en": "The option with most votes is chosen.",
+              "desc_es": "Gana la opción con más votos."
+            },
+            {
+              "id": "mixed",
+              "en": "Mixed",
+              "es": "Mixto",
+              "desc_en": "Different ways for different kinds of decisions.",
+              "desc_es": "Formas distintas según el tipo de decisión."
+            }
+          ],
+          "group": {
+            "en": "How it is run",
+            "es": "Cómo se organiza"
+          }
+        },
+        {
+          "id": "governance_structure",
+          "type": "choice",
+          "en": "Structure",
+          "es": "Estructura",
+          "options": [
+            {
+              "id": "horizontal",
+              "en": "Collaborative / horizontal",
+              "es": "Colaborativa / horizontal",
+              "desc_en": "Power and responsibility are shared fairly equally.",
+              "desc_es": "El poder y la responsabilidad se reparten de forma bastante igual."
+            },
+            {
+              "id": "circles",
+              "en": "Circles or working groups",
+              "es": "Círculos o grupos de trabajo",
+              "desc_en": "Areas are run by small groups.",
+              "desc_es": "Grupos pequeños llevan cada área."
+            },
+            {
+              "id": "hierarchical",
+              "en": "Hierarchical",
+              "es": "Jerárquica",
+              "desc_en": "Clear roles with more say for some.",
+              "desc_es": "Roles claros, con más voz para algunos."
+            }
+          ],
+          "group": {
+            "en": "How it is run",
+            "es": "Cómo se organiza"
+          }
+        },
+        {
+          "id": "economic_model",
+          "type": "choice",
+          "en": "Economic model",
+          "es": "Modelo económico",
+          "options": [
+            {
+              "id": "independent",
+              "en": "Independent finances",
+              "es": "Finanzas independientes",
+              "desc_en": "Members keep their own finances, with little sharing.",
+              "desc_es": "Cada miembro lleva sus finanzas, con poco en común."
+            },
+            {
+              "id": "partial",
+              "en": "Partly shared",
+              "es": "Parcialmente compartidas",
+              "desc_en": "Some income or costs are pooled.",
+              "desc_es": "Se ponen en común algunos ingresos o gastos."
+            },
+            {
+              "id": "shared",
+              "en": "Fully shared",
+              "es": "Totalmente compartidas",
+              "desc_en": "Income and costs are pooled.",
+              "desc_es": "Se ponen en común ingresos y gastos."
+            }
+          ],
+          "group": {
+            "en": "Money and things",
+            "es": "Dinero y bienes"
+          },
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "costs",
+          "type": "choices",
+          "en": "Costs of living there",
+          "es": "Costes de vivir allí",
+          "options": [
+            {
+              "id": "entry_fee",
+              "en": "A one-time fee, investment or share to join",
+              "es": "Una cuota, inversión o participación para entrar"
+            },
+            {
+              "id": "dues",
+              "en": "Monthly or yearly fees",
+              "es": "Cuotas mensuales o anuales"
+            },
+            {
+              "id": "own_income",
+              "en": "Members need their own income",
+              "es": "Los miembros necesitan ingresos propios"
+            },
+            {
+              "id": "work_exchange",
+              "en": "Work exchange possible",
+              "es": "Posible intercambio por trabajo"
+            }
+          ],
+          "group": {
+            "en": "Money and things",
+            "es": "Dinero y bienes"
+          },
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "vehicles",
+          "type": "choices",
+          "en": "Vehicles",
+          "es": "Vehículos",
+          "options": [
+            {
+              "id": "own",
+              "en": "Most people own a vehicle",
+              "es": "La mayoría tiene vehículo propio"
+            },
+            {
+              "id": "shared",
+              "en": "Shared community vehicles",
+              "es": "Vehículos compartidos de la comunidad"
+            },
+            {
+              "id": "car_sharing",
+              "en": "Car sharing",
+              "es": "Coche compartido"
+            },
+            {
+              "id": "car_free",
+              "en": "Car-free",
+              "es": "Sin coches"
+            }
+          ],
+          "group": {
+            "en": "Money and things",
+            "es": "Dinero y bienes"
+          },
+          "not_for": [
+            "school",
+            "association"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lifestyle",
+      "en": "Lifestyle and culture",
+      "es": "Estilo de vida y cultura",
+      "fields": [
+        {
+          "id": "food",
+          "type": "choices",
+          "en": "Food",
+          "es": "Comida",
+          "options": [
+            {
+              "id": "shared_meals",
+              "en": "Shared meals",
+              "es": "Comidas compartidas"
+            },
+            {
+              "id": "vegetarian",
+              "en": "Vegetarian",
+              "es": "Vegetariana"
+            },
+            {
+              "id": "vegan",
+              "en": "Vegan",
+              "es": "Vegana"
+            },
+            {
+              "id": "own_food",
+              "en": "Grows its own food",
+              "es": "Cultiva su comida"
+            },
+            {
+              "id": "food_surplus",
+              "en": "Food surplus / dumpster diving",
+              "es": "Excedentes / recuperación de comida"
+            }
+          ]
+        },
+        {
+          "id": "social_life",
+          "type": "choice",
+          "en": "Social life",
+          "es": "Vida social",
+          "options": [
+            {
+              "id": "often",
+              "en": "People regularly socialise together",
+              "es": "Se hace vida social a menudo"
+            },
+            {
+              "id": "sometimes",
+              "en": "Sometimes",
+              "es": "A veces"
+            },
+            {
+              "id": "private",
+              "en": "Mostly private lives",
+              "es": "Vidas sobre todo privadas"
+            }
+          ],
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "local_ties",
+          "type": "choice",
+          "en": "Ties with the area",
+          "es": "Relación con la zona",
+          "options": [
+            {
+              "id": "strong",
+              "en": "Strong ties with the local community",
+              "es": "Lazos fuertes con la comunidad local"
+            },
+            {
+              "id": "some",
+              "en": "Some ties",
+              "es": "Algunos lazos"
+            },
+            {
+              "id": "few",
+              "en": "Few ties",
+              "es": "Pocos lazos"
+            }
+          ]
+        },
+        {
+          "id": "pets",
+          "type": "choice",
+          "en": "Pets",
+          "es": "Mascotas",
+          "options": [
+            {
+              "id": "allowed",
+              "en": "Allowed",
+              "es": "Permitidas"
+            },
+            {
+              "id": "some",
+              "en": "Some, by agreement",
+              "es": "Algunas, de común acuerdo"
+            },
+            {
+              "id": "none",
+              "en": "Not allowed",
+              "es": "No permitidas"
+            }
+          ],
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "substances",
+          "type": "choice",
+          "en": "Alcohol and other substances",
+          "es": "Alcohol y otras sustancias",
+          "options": [
+            {
+              "id": "free",
+              "en": "Personal choice",
+              "es": "Decisión personal"
+            },
+            {
+              "id": "occasions",
+              "en": "Only at celebrations or ceremonies",
+              "es": "Solo en celebraciones o ceremonias"
+            },
+            {
+              "id": "none",
+              "en": "Substance-free",
+              "es": "Libre de sustancias"
+            }
+          ],
+          "not_for": [
+            "school",
+            "association"
+          ]
+        },
+        {
+          "id": "spirituality",
+          "type": "line",
+          "en": "Spiritual practice",
+          "es": "Práctica espiritual"
+        },
+        {
+          "id": "support",
+          "type": "choices",
+          "en": "Support for members",
+          "es": "Apoyo a los miembros",
+          "options": [
+            {
+              "id": "medical",
+              "en": "Medical care on site or nearby",
+              "es": "Atención médica en el lugar o cerca"
+            },
+            {
+              "id": "childcare",
+              "en": "Childcare",
+              "es": "Cuidado de niños"
+            },
+            {
+              "id": "elder_care",
+              "en": "Care for elders",
+              "es": "Cuidado de mayores"
+            }
+          ],
+          "not_for": [
+            "school",
+            "association"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diversity",
+      "en": "Diversity and social justice",
+      "es": "Diversidad y justicia social",
+      "fields": [
+        {
+          "id": "ages",
+          "type": "levels",
+          "en": "Ages",
+          "es": "Edades",
+          "groups": [
+            {
+              "id": "children",
+              "en": "Children",
+              "es": "Niños"
+            },
+            {
+              "id": "young",
+              "en": "Young adults",
+              "es": "Jóvenes"
+            },
+            {
+              "id": "adults",
+              "en": "Adults",
+              "es": "Adultos"
+            },
+            {
+              "id": "older",
+              "en": "Older people",
+              "es": "Mayores"
+            }
+          ],
+          "levels": [
+            {
+              "en": "none",
+              "es": "ninguno"
+            },
+            {
+              "en": "a few",
+              "es": "pocos"
+            },
+            {
+              "en": "some",
+              "es": "algunos"
+            },
+            {
+              "en": "many",
+              "es": "muchos"
+            }
+          ]
+        },
+        {
+          "id": "gender",
+          "type": "choice",
+          "en": "Gender balance",
+          "es": "Equilibrio de género",
+          "options": [
+            {
+              "id": "mostly_women",
+              "en": "Mostly women",
+              "es": "Sobre todo mujeres"
+            },
+            {
+              "id": "balanced",
+              "en": "Balanced",
+              "es": "Equilibrado"
+            },
+            {
+              "id": "mostly_men",
+              "en": "Mostly men",
+              "es": "Sobre todo hombres"
+            }
+          ]
+        },
+        {
+          "id": "lgbtq_friendly",
+          "type": "flag",
+          "en": "LGBTQ+ friendly",
+          "es": "Amigable con LGBTQ+"
+        },
+        {
+          "id": "practices",
+          "type": "choices",
+          "en": "Practices",
+          "es": "Prácticas",
+          "options": [
+            {
+              "id": "protests",
+              "en": "Takes part in protests and marches",
+              "es": "Participa en protestas y marchas"
+            },
+            {
+              "id": "local_politics",
+              "en": "Engages with local politics",
+              "es": "Participa en la política local"
+            },
+            {
+              "id": "social_justice",
+              "en": "Volunteers for social justice",
+              "es": "Hace voluntariado por la justicia social"
+            },
+            {
+              "id": "land",
+              "en": "Land reparation or reclamation projects",
+              "es": "Proyectos de reparación o recuperación de tierras"
+            },
+            {
+              "id": "trainings",
+              "en": "Trainings and workshops for members",
+              "es": "Formaciones y talleres para miembros"
+            }
+          ]
+        },
+        {
+          "id": "accessibility",
+          "type": "choices",
+          "en": "Accessible for",
+          "es": "Accesible para",
+          "options": [
+            {
+              "id": "mobility",
+              "en": "Physical or mobility limits",
+              "es": "Limitaciones físicas o de movilidad"
+            },
+            {
+              "id": "neurodiverse",
+              "en": "Neurodiverse people",
+              "es": "Personas neurodivergentes"
+            },
+            {
+              "id": "chronic_illness",
+              "en": "Chronic illness",
+              "es": "Enfermedades crónicas"
+            },
+            {
+              "id": "mental_health",
+              "en": "Mental health conditions",
+              "es": "Salud mental"
+            }
+          ]
+        },
+        {
+          "id": "inclusion",
+          "type": "text",
+          "en": "Inclusion",
+          "es": "Inclusión"
+        }
+      ]
+    }
+  ],
+  "search": {
+    "note": "What people can search by. Only what a place offers, its broad themes and its languages: personal details (ages, gender, rules, money) stay on the profile page and are never filters, so nobody picks a community by them. A place fits an intent when it has one of its offers, says yes to one of its flags, or is one of its types. The 'good to know' filters are a few basics a visitor may really need; they only check a yes, never a detail.",
+    "intents": [
+      {
+        "id": "visit",
+        "en": "Visit",
+        "es": "Visitar",
+        "flags": [
+          "open_visitors"
+        ],
+        "offers": [
+          "events"
+        ]
+      },
+      {
+        "id": "volunteer",
+        "en": "Volunteer",
+        "es": "Hacer voluntariado",
+        "flags": [
+          "open_volunteers"
+        ],
+        "offers": [
+          "volunteering"
+        ]
+      },
+      {
+        "id": "learn",
+        "en": "Learn something",
+        "es": "Aprender algo",
+        "offers": [
+          "courses"
+        ]
+      },
+      {
+        "id": "stay",
+        "en": "Stay a while",
+        "es": "Quedarse un tiempo",
+        "offers": [
+          "stays"
+        ]
+      },
+      {
+        "id": "join",
+        "en": "Join",
+        "es": "Unirse",
+        "flags": [
+          "open_members"
+        ]
+      },
+      {
+        "id": "buy",
+        "en": "Buy local",
+        "es": "Comprar local",
+        "offers": [
+          "food",
+          "crafts"
+        ]
+      },
+      {
+        "id": "school",
+        "en": "Find a school",
+        "es": "Buscar una escuela",
+        "offers": [
+          "school"
+        ],
+        "categories": [
+          "school"
+        ]
+      }
+    ],
+    "themes": "purpose",
+    "languages": "languages",
+    "basics": [
+      {
+        "id": "lgbtq",
+        "en": "LGBTQ+ friendly",
+        "es": "Amigable con LGBTQ+",
+        "field": "lgbtq_friendly",
+        "values": [
+          true
+        ]
+      },
+      {
+        "id": "pets",
+        "en": "Pets welcome",
+        "es": "Mascotas bienvenidas",
+        "field": "pets",
+        "values": [
+          "allowed",
+          "some"
+        ]
+      },
+      {
+        "id": "sober",
+        "en": "Substance-free",
+        "es": "Sin sustancias",
+        "field": "substances",
+        "values": [
+          "none"
+        ]
+      }
+    ]
+  }
+}
