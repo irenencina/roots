@@ -67,7 +67,8 @@
       search: "Search places, towns, offers…", searchLabel: "Search", clearSearch: "Clear the search",
       openProfile: "Open the full profile", profileEmpty: "This place hasn't shared more about itself yet.", notOpen: (x) => "not " + x.toLowerCase(),
       sampleNote: "Sample details, made up for testing. They are not real information about this place.",
-      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", or: " or ", goodToKnow: "Good to know", yes: "yes", no: "no",
+      wantTo: "I'd like to", themes: "Themes", speaks: "Speaks", or: " or ", goodToKnow: "Good to know", yes: "yes", no: "no", clearAll: "Clear all", editSearch: "Change",
+      showPlaces: (n) => "Show " + n + (n === 1 ? " place" : " places"),
       offersBy: "Offers", offers: "What they offer", noOffers: "Nothing listed yet.", source: "source", toConfirm: "to be confirmed",
       found: (n, q) => n + (n === 1 ? " place" : " places") + (q ? " for “" + q + "”" : ""), foundNone: (q) => "Nothing found" + (q ? " for “" + q + "”" : "") + ".",
     },
@@ -100,7 +101,8 @@
       search: "Buscar lugares, pueblos, ofertas…", searchLabel: "Buscar", clearSearch: "Borrar la búsqueda",
       openProfile: "Abrir el perfil completo", profileEmpty: "Este lugar aún no ha compartido más sobre sí mismo.", notOpen: (x) => "no " + x.toLowerCase(),
       sampleNote: "Datos de ejemplo, inventados para probar. No es información real sobre este lugar.",
-      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", or: " o ", goodToKnow: "Bueno saber", yes: "sí", no: "no",
+      wantTo: "Me gustaría", themes: "Temas", speaks: "Habla", or: " o ", goodToKnow: "Bueno saber", yes: "sí", no: "no", clearAll: "Borrar todo", editSearch: "Cambiar",
+      showPlaces: (n) => "Ver " + n + (n === 1 ? " lugar" : " lugares"),
       offersBy: "Ofrecen", offers: "Qué ofrecen", noOffers: "Aún no hay nada.", source: "fuente", toConfirm: "por confirmar",
       found: (n, q) => n + (n === 1 ? " lugar" : " lugares") + (q ? " para «" + q + "»" : ""), foundNone: (q) => "Nada encontrado" + (q ? " para «" + q + "»" : "") + ".",
     },
@@ -1334,12 +1336,33 @@
       (!words.length || words.some((w) => fold(o.what + " " + offerKindLabel(state.offerKindById[o.kind])).includes(w))));
     return hits.map((o) => o.what).join(" · ");
   }
-  const searchEl = $("search"), chipsEl = $("offer-chips");
+  const searchEl = $("search"), chipsEl = $("offer-chips"), searchBtn = $("search-btn"), finderEl = $("finder");
+  function toggleFinder(open) {
+    const show = open === undefined ? finderEl.hidden : open;
+    if (show && !settingsEl.hidden) toggleSettings(false);
+    finderEl.hidden = !show;
+    searchBtn.setAttribute("aria-expanded", String(show));
+    if (show) searchEl.focus(); else searchBtn.focus();
+  }
+  searchBtn.addEventListener("click", () => toggleFinder());
+  $("finder-done").addEventListener("click", () => toggleFinder(false));
+  $("finder-reset").addEventListener("click", () => { clearSearch(); searchEl.focus(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !finderEl.hidden && ev.target !== searchEl) toggleFinder(false); });
+  document.addEventListener("pointerdown", (ev) => {
+    if (!finderEl.hidden && !finderEl.contains(ev.target) && !searchBtn.contains(ev.target)) toggleFinder(false);
+  });
   function renderSearch() {
     searchEl.placeholder = t("search");
     searchEl.setAttribute("aria-label", t("searchLabel"));
     $("search-clear").setAttribute("aria-label", t("clearSearch"));
-    $("search-clear").hidden = !searching();
+    $("search-clear").hidden = !state.query.trim();
+    // the search icon shows how many filters are on, so a closed search is never forgotten
+    const nOn = (state.query.trim() ? 1 : 0) + (state.intent ? 1 : 0) + state.themes.size + state.basics.size + (state.lang ? 1 : 0);
+    $("search-count").hidden = !nOn;
+    $("search-count").textContent = nOn || "";
+    searchBtn.setAttribute("aria-label", t("searchLabel") + (nOn ? " (" + nOn + ")" : ""));
+    $("finder-reset").textContent = t("clearAll");
+    $("finder-reset").hidden = !nOn;
     // only chips that would find something
     const located = state.places.filter((p) => p.location);
     const intents = searchCfg().intents.filter((it) => located.some((p) => fitsIntent(p, it)));
@@ -1377,10 +1400,12 @@
   }
   searchEl.addEventListener("input", () => { state.query = searchEl.value; searchChanged(); });
   searchEl.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape") clearSearch();
+    // Escape clears the typed words first, then closes the search
+    if (ev.key === "Escape") { if (state.query) { searchEl.value = state.query = ""; searchChanged(); } else toggleFinder(false); }
     if (ev.key === "Enter") {
       // Enter with a single place found goes to it; with several, frames them all
       const found = state.places.filter((p) => p.location && !state.hiddenPlace(p));
+      if (found.length) toggleFinder(false);
       if (found.length === 1) select(found[0].id, { zoom: true });
       else if (found.length > 1) zoomToPlaces(found.map((p) => p.id));
     }
@@ -1396,6 +1421,15 @@
     const what = [state.query.trim(), it && L(it), ths].concat([...state.basics].map((id) => basicById(id)).filter(Boolean).map((bc) => L(bc)), [state.lang]).filter(Boolean).join(" · ");
     listTitleEl.textContent = searching() ? (here.length ? t("found", here.length, what) : t("foundNone", what))
       : here.length ? "" : t("noPlacesIn", focusName());
+    if (searching()) { // with a way to change or clear the search right there
+      const edit = document.createElement("span");
+      edit.className = "list-actions";
+      edit.innerHTML = '<button type="button" class="edit">' + t("editSearch") + '</button> · <button type="button" class="clear">' + t("clearAll") + "</button>";
+      edit.querySelector(".edit").addEventListener("click", () => toggleFinder(true));
+      edit.querySelector(".clear").addEventListener("click", clearSearch);
+      listTitleEl.appendChild(edit);
+    }
+    $("finder-done").textContent = here.length && searching() ? t("showPlaces", here.length) : t("done");
     legendEl.innerHTML = "";
     state.categories.forEach((c) => {
       const places = here.filter((p) => p.categories.includes(c.id));

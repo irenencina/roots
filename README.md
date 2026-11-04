@@ -53,7 +53,7 @@ Spanish labels and the options for each choice. A place in `data/places.json` fi
 these fields by id; the full profile page (opened from the title on the post-it) shows only the
 fields a place has. The sign-up form for new places will be built from the same list.
 
-The search box in the side list finds places by name, town, type, offer or description, ignoring
+The search (the magnifier by the gear) finds places by name, town, type, offer or description, ignoring
 accents and case. Under it, chips filter by what you would like to do (visit, volunteer, learn,
 stay, join, buy local, find a school), by one or more broad themes (a place fits any of them), by a few "good to know" basics
 (LGBTQ+ friendly, pets welcome, substance-free; a place must say a clear yes), and
